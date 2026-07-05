@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs/promises';
+import path from 'path';
 import { execSync } from 'child_process';
 import { PrismaClient } from '@prisma/client';
 import { employeesRouter } from './routes/employees';
@@ -10,6 +12,7 @@ import { logsRouter } from './routes/logs';
 import { filesRouter } from './routes/files';
 import { kanbanRouter } from './routes/kanban';
 import { initScheduler } from './services/scheduler';
+import { getProjectDir } from './config';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -35,6 +38,46 @@ app.get('/api/edges', async (_req, res) => {
   const employees = await prisma.employee.findMany({ where: { NOT: { supervisorId: null } } });
   const edges = employees.map((e) => ({ id: `${e.supervisorId}-${e.id}`, fromId: e.supervisorId, toId: e.id }));
   res.json(edges);
+});
+
+app.get('/api/project-dir', (_req, res) => {
+  res.json({ path: getProjectDir() });
+});
+
+app.get('/api/project-dir/list', async (req, res) => {
+  const base = getProjectDir();
+  const sub = (req.query.dir as string) || '';
+  const target = path.join(base, sub);
+  if (!target.startsWith(base)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const entries = await fs.readdir(target, { withFileTypes: true });
+    const items = await Promise.all(entries.map(async (e) => {
+      const full = path.join(target, e.name);
+      let size = 0;
+      if (e.isFile()) {
+        try { const s = await fs.stat(full); size = s.size; } catch {}
+      }
+      return { name: e.name, type: e.isDirectory() ? 'dir' : 'file', size, path: sub ? `${sub}/${e.name}` : e.name };
+    }));
+    items.sort((a, b) => (a.type === 'dir' ? 0 : 1) - (b.type === 'dir' ? 0 : 1) || a.name.localeCompare(b.name));
+    res.json({ path: base, current: sub, items });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/project-dir/read', async (req, res) => {
+  const base = getProjectDir();
+  const filepath = req.query.file as string;
+  if (!filepath) return res.status(400).json({ error: 'file query param required' });
+  const target = path.join(base, filepath);
+  if (!target.startsWith(base)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const content = await fs.readFile(target, 'utf-8');
+    res.json({ path: target, content });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/health', (_req, res) => {

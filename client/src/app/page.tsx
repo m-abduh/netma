@@ -252,16 +252,24 @@ function ChatPage() {
 
   const addToKanban = async (chatContent: string, empId?: string) => {
     const firstCol = columns?.[0];
-    if (!firstCol) return;
-    const title = chatContent.split('\n')[0].slice(0, 80);
-    await api.kanban.tasks.create({
-      columnId: firstCol.id,
-      title: title || 'Plan',
-      description: chatContent,
-      employeeId: empId || activeChat,
-      source: 'chat',
-    });
-    queryClient.invalidateQueries({ queryKey: ['kanban-columns'] });
+    if (!firstCol) {
+      alert('Buat kolom Kanban dulu di halaman Kanban');
+      return;
+    }
+    try {
+      const title = chatContent.split('\n')[0].slice(0, 80);
+      await api.kanban.tasks.create({
+        columnId: firstCol.id,
+        title: title || 'Plan',
+        description: chatContent,
+        employeeId: empId || activeChat,
+        source: 'chat',
+      });
+      queryClient.invalidateQueries({ queryKey: ['kanban-columns'] });
+      alert('Task berhasil ditambahkan ke Kanban');
+    } catch (err: any) {
+      alert('Gagal: ' + err.message);
+    }
   };
 
   const employeeList = employees?.filter((e: Employee) => e.id !== activeChat) || [];
@@ -330,15 +338,17 @@ function ChatPage() {
                       </div>
                     )}
                   </div>
-                  {chat.role === 'assistant' && subordinates.length > 0 && idx === chats.length - 1 && (
+                  {chat.role === 'assistant' && idx === chats.length - 1 && (
                     <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={broadcastToSubordinates}
-                        disabled={broadcasting}
-                        className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded-lg disabled:opacity-50"
-                      >
-                        {broadcasting ? 'Menyebarkan...' : `Sebarkan ke ${subordinates.length} Bawahan`}
-                      </button>
+                      {subordinates.length > 0 && (
+                        <button
+                          onClick={broadcastToSubordinates}
+                          disabled={broadcasting}
+                          className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded-lg disabled:opacity-50"
+                        >
+                          {broadcasting ? 'Menyebarkan...' : `Sebarkan ke ${subordinates.length} Bawahan`}
+                        </button>
+                      )}
                       <button
                         onClick={() => addToKanban(chat.content)}
                         className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded-lg"
@@ -678,77 +688,108 @@ function KanbanPage() {
   );
 }
 
+function FileIcon({ name, type }: { name: string; type: string }) {
+  if (type === 'dir') return <span className="mr-1">📁</span>;
+  const ext = name.split('.').pop()?.toLowerCase();
+  const icons: Record<string, string> = { ts: '🔷', tsx: '⚛️', js: '🟨', jsx: '⚛️', json: '📋', md: '📝', css: '🎨', html: '🌐', py: '🐍', go: '🔵', rs: '🦀', sql: '🗄️', yaml: '📄', yml: '📄', toml: '📄' };
+  return <span className="mr-1">{icons[ext || ''] || '📄'}</span>;
+}
+
 function FilesPage() {
-  const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
-  const [selectedEmp, setSelectedEmp] = useState<string | null>(null);
-  const { data: files, refetch } = useQuery({
-    queryKey: ['files', selectedEmp],
-    queryFn: () => api.files.list(selectedEmp!),
-    enabled: !!selectedEmp,
-  });
-  const [previewFile, setPreviewFile] = useState<string | null>(null);
-  const { data: fileContent } = useQuery({
-    queryKey: ['file-content', selectedEmp, previewFile],
-    queryFn: () => api.files.read(selectedEmp!, previewFile || undefined),
-    enabled: !!selectedEmp && !!previewFile,
+  const { data: dirInfo } = useQuery({ queryKey: ['project-dir'], queryFn: api.projectDir.info });
+  const [currentDir, setCurrentDir] = useState('');
+  const [dirStack, setDirStack] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [loadingContent, setLoadingContent] = useState(false);
+
+  const { data: items, refetch: refetchDir } = useQuery({
+    queryKey: ['project-dir-list', currentDir],
+    queryFn: () => api.projectDir.list(currentDir || undefined),
   });
 
-  const getFileName = (p: string) => p.split('/').pop() || p;
+  const navigate = (dir: string) => {
+    setDirStack((prev) => [...prev, currentDir]);
+    setCurrentDir(dir);
+    setSelectedFile(null);
+    setFileContent(null);
+  };
+
+  const goBack = () => {
+    const prev = dirStack[dirStack.length - 1];
+    setDirStack((prev) => prev.slice(0, -1));
+    setCurrentDir(prev);
+    setSelectedFile(null);
+    setFileContent(null);
+  };
+
+  const openFile = async (file: string) => {
+    setSelectedFile(file);
+    setLoadingContent(true);
+    try {
+      const res = await api.projectDir.read(file);
+      setFileContent(res.content);
+    } catch {
+      setFileContent('// Error reading file');
+    } finally {
+      setLoadingContent(false);
+    }
+  };
+
+  const breadcrumbs = [{ name: dirInfo?.path?.split('/').pop() || 'workspace', dir: '' }, ...dirStack.map((d, i) => ({ name: d.split('/').pop() || d, dir: dirStack.slice(0, i + 1).join('/') }))];
 
   return (
-    <div className="p-6 flex gap-6 h-full">
-      <div className="w-64 space-y-2">
-        <h2 className="text-xl font-bold mb-4">File Manager</h2>
-        {employees?.map((emp: Employee) => (
-          <button
-            key={emp.id}
-            onClick={() => { setSelectedEmp(emp.id); setPreviewFile(null); }}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-              selectedEmp === emp.id ? 'bg-blue-600' : 'bg-slate-800 hover:bg-slate-700'
-            }`}
-          >
-            📁 {emp.name}
-          </button>
-        ))}
+    <div className="flex h-full">
+      <div className="w-72 border-r border-slate-700 flex flex-col">
+        <div className="p-3 border-b border-slate-700 flex items-center gap-2">
+          <span>📂</span>
+          <span className="text-sm font-semibold truncate">{dirInfo?.path?.split('/').pop() || 'Workspace'}</span>
+        </div>
+        <div className="flex-1 overflow-auto p-2 space-y-0.5">
+          {currentDir && (
+            <button onClick={goBack} className="flex items-center gap-1 w-full px-2 py-1 rounded text-sm text-slate-400 hover:text-white hover:bg-slate-700">
+              ← Kembali
+            </button>
+          )}
+          {items?.items?.map((item: any) => (
+            <button
+              key={item.path}
+              onClick={() => item.type === 'dir' ? navigate(item.path) : openFile(item.path)}
+              className={`flex items-center gap-1 w-full px-2 py-1 rounded text-sm text-left hover:bg-slate-700 ${
+                selectedFile === item.path ? 'bg-slate-700 text-blue-400' : 'text-slate-300'
+              }`}
+            >
+              <FileIcon name={item.name} type={item.type} />
+              <span className="truncate">{item.name}</span>
+              {item.type === 'file' && item.size > 0 && (
+                <span className="ml-auto text-xs text-slate-600">{item.size > 1024 ? `${(item.size / 1024).toFixed(1)}KB` : `${item.size}B`}</span>
+              )}
+            </button>
+          ))}
+          {items?.items?.length === 0 && <p className="text-xs text-slate-500 px-2 py-4 text-center">Kosong</p>}
+        </div>
       </div>
 
-      <div className="flex-1">
-        {!selectedEmp ? (
-          <div className="text-center text-slate-500 mt-20">Pilih karyawan untuk lihat file</div>
+      <div className="flex-1 flex flex-col">
+        {!selectedFile ? (
+          <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
+            Pilih file dari sidebar
+          </div>
         ) : (
-          <div className="space-y-4">
-            <div className="bg-slate-800 rounded-xl p-4">
-              <h3 className="font-semibold mb-3">File System</h3>
-              {files?.filesystem?.length > 0 ? (
-                <div className="space-y-1">
-                  {files.filesystem.map((fp: string) => (
-                    <button
-                      key={fp}
-                      onClick={() => setPreviewFile(fp)}
-                      className={`w-full text-left px-3 py-1.5 rounded text-sm hover:bg-slate-700 ${
-                        previewFile === fp ? 'bg-slate-700 text-blue-400' : 'text-slate-300'
-                      }`}
-                    >
-                      📄 {getFileName(fp)}
-                    </button>
-                  ))}
-                </div>
+          <>
+            <div className="p-3 border-b border-slate-700 text-sm text-slate-400 truncate">
+              📄 {selectedFile}
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              {loadingContent ? (
+                <div className="text-slate-500 italic">Loading...</div>
               ) : (
-                <p className="text-sm text-slate-500">Belum ada file</p>
+                <pre className="text-sm text-slate-200 whitespace-pre-wrap font-mono leading-relaxed">
+                  {fileContent}
+                </pre>
               )}
             </div>
-
-            {previewFile && fileContent && (
-              <div className="bg-slate-800 rounded-xl p-4">
-                <h3 className="font-semibold mb-3 text-sm text-slate-400">
-                  Preview: {getFileName(previewFile)}
-                </h3>
-                <pre className="text-sm text-slate-300 whitespace-pre-wrap max-h-96 overflow-auto">
-                  {fileContent.content || '(binary file)'}
-                </pre>
-              </div>
-            )}
-          </div>
+          </>
         )}
       </div>
     </div>

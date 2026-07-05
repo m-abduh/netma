@@ -1,7 +1,7 @@
 import { spawn, execSync, ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
-import { OPENCODE_PASSWORD } from '../config';
+import { OPENCODE_PASSWORD, getProjectDir } from '../config';
 
 interface ProcessEntry {
   process: ChildProcess;
@@ -34,7 +34,9 @@ Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
     };
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 
+    const projectDir = getProjectDir();
     const proc = spawn('opencode', ['serve', '--port', String(employee.port), '--hostname', '127.0.0.1'], {
+      cwd: projectDir,
       env: {
         ...process.env,
         OPENCODE_CONFIG_DIR: configDir,

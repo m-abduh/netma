@@ -48,14 +48,10 @@ export const api = {
       return request<any>(`/api/logs${qs}`);
     },
   },
-  files: {
-    list: (employeeId: string) => request<any>(`/api/employees/${employeeId}/files`),
-    read: (employeeId: string, filepath?: string, id?: string) => {
-      const params = new URLSearchParams();
-      if (filepath) params.set('filepath', filepath);
-      if (id) params.set('id', id);
-      return request<any>(`/api/employees/${employeeId}/files/read?${params.toString()}`);
-    },
+  projectDir: {
+    info: () => request<any>('/api/project-dir'),
+    list: (dir?: string) => request<any>(`/api/project-dir/list${dir ? `?dir=${encodeURIComponent(dir)}` : ''}`),
+    read: (file: string) => request<any>(`/api/project-dir/read?file=${encodeURIComponent(file)}`),
   },
   kanban: {
     columns: {
