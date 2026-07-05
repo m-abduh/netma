@@ -122,6 +122,20 @@ Setiap **AI Karyawan**:
 - **Dashboard badge** — notifikasi real-time di pojok layar
 - Bisa di-custom tiap notifikasi mau dikirim ke mana
 
+### Kanban Board
+- Papan Kanban untuk tracking tugas semua AI Karyawan
+- **Default columns**: Backlog → To Do → In Progress → Review → Done
+- **Columns bisa di-custom** (tambah, edit, hapus, urutkan)
+- Setiap task punya:
+  - Judul, deskripsi
+  - Assignee (AI Karyawan)
+  - Priority (Low/Medium/High/Urgent)
+  - Column posisi
+  - Deadline (opsional)
+  - Created from: chat prompt / manual / auto dari job
+- **Drag & drop** antar column
+- Filter by karyawan, priority, date
+
 ## 5. Cara Kerja Chat
 
 ```
@@ -236,6 +250,18 @@ Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.
 |---|---|---|
 | GET | /api/employees/:id/files | List file milik karyawan |
 | GET | /api/employees/:id/files/read | Preview isi file |
+
+### Kanban
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET | /api/kanban/columns | List columns |
+| POST | /api/kanban/columns | Tambah column |
+| PUT | /api/kanban/columns/:id | Edit column |
+| DELETE | /api/kanban/columns/:id | Hapus column |
+| GET | /api/kanban/tasks | List tasks |
+| POST | /api/kanban/tasks | Tambah task |
+| PUT | /api/kanban/tasks/:id | Edit task (pindah column, dll) |
+| DELETE | /api/kanban/tasks/:id | Hapus task |
 
 ## 9. Alur Start/Stop Opencode
 
