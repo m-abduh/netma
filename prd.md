@@ -66,6 +66,37 @@ Setiap **AI Karyawan**:
 - **ON**: Express `child_process.spawn` → `opencode serve --port XXXX` dengan config khusus sesuai job desc
 - **OFF**: `kill` proses opencode sesuai port
 
+### Broadcast
+- Kirim 1 prompt ke semua karyawan yang ON sekaligus
+- Cocok buat: "Semua buat laporan hari ini", "Ada meeting", dll
+- Hasil tiap karyawan tampil terpisah di dashboard
+
+### File Manager
+- Lihat file-file yang dibuat/diedit tiap karyawan langsung dari dashboard
+- Tree view per karyawan
+- Preview isi file
+- Download file
+
+### Audit Log
+- Catat semua aktivitas:
+  | Aktor | Aksi | Contoh |
+  |---|---|---|
+  | System | Job trigger | "Laporan Pagi" → Alex ✅ |
+  | System | Job error | "Bulanan" gagal - timeout |
+  | Bos | Chat | Kirim prompt ke Alex |
+  | Karyawan (AI) | File created | routes/auth.js |
+  | Karyawan (AI) | Tool used | shell: npm install |
+  | Bos | Turn ON/OFF | Budi → OFF |
+  | Bos | CRUD | Tambah karyawan Citra |
+  | Bos | Edit job | Jadwal diubah ke 09:00 |
+- Tampilan: tabel dengan filter (tanggal, aktor, jenis aksi)
+- Berguna buat monitoring, troubleshooting, evaluasi kinerja AI
+
+### Notifikasi
+- **Telegram Bot** — notifikasi pas job selesai/gagal, atau karyawan error
+- **Dashboard badge** — notifikasi real-time di pojok layar
+- Bisa di-custom tiap notifikasi mau dikirim ke mana
+
 ## 5. Cara Kerja Chat
 
 ```
@@ -150,6 +181,22 @@ Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.
 | PUT | /api/jobs/:id | Edit job |
 | DELETE | /api/jobs/:id | Hapus job |
 | POST | /api/jobs/:id/run-now | Jalankan job manual |
+
+### Broadcast
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| POST | /api/broadcast | Kirim prompt ke semua karyawan ON |
+
+### Audit Log
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET | /api/logs | List log (filter: date, actor, action) |
+
+### Files
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET | /api/employees/:id/files | List file milik karyawan |
+| GET | /api/employees/:id/files/read | Preview isi file |
 
 ## 9. Alur Start/Stop Opencode
 
