@@ -16,6 +16,7 @@ router.post('/', async (req: Request, res: Response) => {
 
   for (const emp of employees) {
     try {
+      if (!emp.port) throw new Error('Employee has no port assigned');
       const output = await chatWithEmployee(emp, prompt);
 
       await prisma.chat.create({

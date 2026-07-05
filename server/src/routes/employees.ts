@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { getProcessManager } from '../services/processManager';
 
 const router = Router();
 const PORT_RANGE_START = 21000;
@@ -69,32 +70,46 @@ router.post('/:id/turn-on', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
   const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
   if (!employee) return res.status(404).json({ error: 'Not found' });
-  if (employee.status === 'online') return res.json(employee);
 
-  const updated = await prisma.employee.update({
-    where: { id: employee.id },
-    data: { status: 'online' },
-  });
-  await prisma.auditLog.create({
-    data: { actor: 'Bos', action: 'Turn ON/OFF', target: employee.id, detail: `${employee.name} → ON` },
-  });
-  res.json(updated);
+  try {
+    const pm = getProcessManager();
+    if (!pm.isRunning(employee.port)) {
+      await pm.start(employee);
+    }
+
+    const updated = await prisma.employee.update({
+      where: { id: employee.id },
+      data: { status: 'online' },
+    });
+    await prisma.auditLog.create({
+      data: { actor: 'Bos', action: 'Turn ON/OFF', target: employee.id, detail: `${employee.name} → ON` },
+    });
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: `Failed to start: ${err.message}` });
+  }
 });
 
 router.post('/:id/turn-off', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
   const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
   if (!employee) return res.status(404).json({ error: 'Not found' });
-  if (employee.status === 'offline') return res.json(employee);
 
-  const updated = await prisma.employee.update({
-    where: { id: employee.id },
-    data: { status: 'offline' },
-  });
-  await prisma.auditLog.create({
-    data: { actor: 'Bos', action: 'Turn ON/OFF', target: employee.id, detail: `${employee.name} → OFF` },
-  });
-  res.json(updated);
+  try {
+    const pm = getProcessManager();
+    pm.stop(employee.port);
+
+    const updated = await prisma.employee.update({
+      where: { id: employee.id },
+      data: { status: 'offline' },
+    });
+    await prisma.auditLog.create({
+      data: { actor: 'Bos', action: 'Turn ON/OFF', target: employee.id, detail: `${employee.name} → OFF` },
+    });
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: `Failed to stop: ${err.message}` });
+  }
 });
 
 export { router as employeesRouter };

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { chatWithEmployee } from '../services/opencode';
 
 const router = Router();
 
@@ -52,23 +53,7 @@ router.post('/:id/run-now', async (req: Request, res: Response) => {
   }
 
   try {
-    const systemPrompt = `Kamu adalah ${job.employee.name}, seorang ${job.employee.rank}.
-Deskripsi pekerjaan: ${job.employee.jobDesc}
-Jam kerja: ${job.employee.workStart} - ${job.employee.workEnd}`;
-
-    const response = await fetch(`http://127.0.0.1:${job.employee.port}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        parts: [{ type: 'text', text: job.prompt }],
-        system: systemPrompt,
-        model: job.employee.model,
-      }),
-      signal: AbortSignal.timeout(120000),
-    });
-
-    const data = await response.json();
-    const output = data.message || data.response || JSON.stringify(data);
+    const output = await chatWithEmployee(job.employee, job.prompt);
 
     await prisma.job.update({
       where: { id: job.id },

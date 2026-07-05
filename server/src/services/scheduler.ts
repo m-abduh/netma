@@ -12,12 +12,6 @@ export function initScheduler(prisma: PrismaClient) {
 
       for (const job of jobs) {
         if (!cron.validate(job.schedule)) continue;
-
-        const nextRun = cron.schedule(job.schedule).nextDate();
-        const now = new Date();
-        const diff = nextRun.getTime() - now.getTime();
-        if (diff < 0 || diff > 60000) continue;
-
         if (job.employee.status !== 'online') continue;
 
         try {

@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import { OPENCODE_PASSWORD } from '../config';
 
 interface ProcessEntry {
   process: ChildProcess;
@@ -9,6 +10,13 @@ interface ProcessEntry {
 
 class ProcessManager {
   private processes: Map<number, ProcessEntry> = new Map();
+
+  private buildSystemPrompt(employee: { name: string; rank: string; jobDesc: string; workStart: string; workEnd: string }): string {
+    return `Kamu adalah ${employee.name}, seorang ${employee.rank}.
+Deskripsi pekerjaan: ${employee.jobDesc}
+Jam kerja: ${employee.workStart} - ${employee.workEnd}
+Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.`;
+  }
 
   async start(employee: { id: string; name: string; rank: string; jobDesc: string; model: string; port: number; workStart: string; workEnd: string }): Promise<{ pid: number }> {
     if (this.processes.has(employee.port)) {
@@ -21,10 +29,7 @@ class ProcessManager {
     const configPath = path.join(configDir, 'config.json');
     const config = {
       model: employee.model,
-      systemPrompt: `Kamu adalah ${employee.name}, seorang ${employee.rank}.
-Deskripsi pekerjaan: ${employee.jobDesc}
-Jam kerja: ${employee.workStart} - ${employee.workEnd}
-Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.`,
+      systemPrompt: this.buildSystemPrompt(employee),
       port: employee.port,
       hostname: '127.0.0.1',
     };
@@ -34,6 +39,7 @@ Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.`,
       env: {
         ...process.env,
         OPENCODE_CONFIG_DIR: configDir,
+        OPENCODE_SERVER_PASSWORD: OPENCODE_PASSWORD,
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });

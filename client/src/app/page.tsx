@@ -222,6 +222,7 @@ function ChatPage() {
     try {
       await api.chat.send(activeChat, prompt);
       setPrompt('');
+      refetchChats();
     } catch (err: any) {
       alert(err.message);
     } finally {
