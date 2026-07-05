@@ -206,6 +206,8 @@ function ChatPage() {
   const { activeChat, setActiveChat } = useStore();
   const [prompt, setPrompt] = useState('');
   const [sending, setSending] = useState(false);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
   const { data: chats, refetch: refetchChats } = useQuery({
@@ -214,8 +216,12 @@ function ChatPage() {
     enabled: !!activeChat,
     refetchInterval: 3000,
   });
+  const { data: columns } = useQuery({ queryKey: ['kanban-columns'], queryFn: api.kanban.columns.list });
 
   const activeEmployee = employees?.find((e: Employee) => e.id === activeChat);
+  const subordinates = employees?.filter((e: Employee) => e.supervisorId === activeChat) || [];
+  const lastUserMsg = chats?.filter((c: any) => c.role === 'user').slice(-1)[0];
+  const lastAssistantMsg = chats?.filter((c: any) => c.role === 'assistant').slice(-1)[0];
 
   const sendMessage = async () => {
     if (!prompt.trim() || !activeChat) return;
@@ -229,6 +235,33 @@ function ChatPage() {
     } finally {
       setSending(false);
     }
+  };
+
+  const broadcastToSubordinates = async () => {
+    if (!activeChat || !lastUserMsg || !lastAssistantMsg) return;
+    setBroadcasting(true);
+    try {
+      await api.chat.broadcastToSubordinates(activeChat, lastUserMsg.content, lastAssistantMsg.content);
+      refetchChats();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setBroadcasting(false);
+    }
+  };
+
+  const addToKanban = async (chatContent: string, empId?: string) => {
+    const firstCol = columns?.[0];
+    if (!firstCol) return;
+    const title = chatContent.split('\n')[0].slice(0, 80);
+    await api.kanban.tasks.create({
+      columnId: firstCol.id,
+      title: title || 'Plan',
+      description: chatContent,
+      employeeId: empId || activeChat,
+      source: 'chat',
+    });
+    queryClient.invalidateQueries({ queryKey: ['kanban-columns'] });
   };
 
   const employeeList = employees?.filter((e: Employee) => e.id !== activeChat) || [];
@@ -263,6 +296,9 @@ function ChatPage() {
             <div>
               <h3 className="font-bold">{activeEmployee.name}</h3>
               <p className="text-sm text-slate-400">{activeEmployee.rank}</p>
+              {subordinates.length > 0 && (
+                <p className="text-xs text-slate-500 mt-1">{subordinates.length} bawahan</p>
+              )}
             </div>
             <button
               onClick={() => setActiveChat(null)}
@@ -272,10 +308,10 @@ function ChatPage() {
             </button>
           </div>
           <div className="flex-1 overflow-auto p-4 space-y-4">
-            {chats?.map((chat: any) => (
+            {chats?.map((chat: any, idx: number) => (
                 <div
                   key={chat.id}
-                  className={`flex ${chat.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex flex-col ${chat.role === 'user' ? 'items-end' : 'items-start'}`}
                 >
                   <div
                     className={`max-w-[80%] p-3 rounded-xl text-sm ${
@@ -294,6 +330,23 @@ function ChatPage() {
                       </div>
                     )}
                   </div>
+                  {chat.role === 'assistant' && subordinates.length > 0 && idx === chats.length - 1 && (
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={broadcastToSubordinates}
+                        disabled={broadcasting}
+                        className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded-lg disabled:opacity-50"
+                      >
+                        {broadcasting ? 'Menyebarkan...' : `Sebarkan ke ${subordinates.length} Bawahan`}
+                      </button>
+                      <button
+                        onClick={() => addToKanban(chat.content)}
+                        className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded-lg"
+                      >
+                        ➕ Kanban
+                      </button>
+                    </div>
+                  )}
                 </div>
             ))}
             {sending && (
@@ -379,7 +432,6 @@ const nodeTypes = { employee: EmployeeNode };
 
 function OrganogramPage({ onChat }: { onChat: (id: string) => void }) {
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
-  const { data: dbEdges } = useQuery({ queryKey: ['edges'], queryFn: api.edges.list });
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node>([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const queryClient = useQueryClient();
@@ -388,17 +440,11 @@ function OrganogramPage({ onChat }: { onChat: (id: string) => void }) {
 
   useEffect(() => {
     if (!employees) return;
-    const boss = employees.find((e: Employee) => e.rank === 'Boss');
-    const others = employees.filter((e: Employee) => e.rank !== 'Boss');
 
-    const centerX = 400;
-    const nodes = employees.map((emp, i) => ({
+    const nodes = employees.map((emp) => ({
       id: emp.id,
       type: 'employee',
-      position: {
-        x: emp.positionX || (emp.rank === 'Boss' ? centerX - 75 : (i - (boss ? 1 : 0)) * 200),
-        y: emp.positionY || (emp.rank === 'Boss' ? 0 : 150),
-      },
+      position: { x: emp.positionX || 0, y: emp.positionY || 0 },
       data: {
         label: emp.name,
         rank: emp.rank,
@@ -409,19 +455,19 @@ function OrganogramPage({ onChat }: { onChat: (id: string) => void }) {
     }));
     setRfNodes(nodes);
 
-    if (dbEdges) {
-      const edges = dbEdges.map((e: any) => ({
-        id: e.id,
-        source: e.fromId,
-        target: e.toId,
-        type: 'smoothstep',
+    const edges = employees
+      .filter((e: Employee) => e.supervisorId)
+      .map((e: Employee) => ({
+        id: `${e.supervisorId}-${e.id}`,
+        source: e.supervisorId!,
+        target: e.id,
+        type: 'smoothstep' as const,
         animated: true,
         style: { stroke: '#475569', strokeWidth: 2 },
         markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' },
       }));
-      setRfEdges(edges);
-    }
-  }, [employees, dbEdges]);
+    setRfEdges(edges);
+  }, [employees]);
 
   const onNodeClick = useCallback((_event: any, node: any) => {
     const emp = employees?.find((e: Employee) => e.id === node.id);
@@ -972,21 +1018,21 @@ function SettingsPage() {
   const queryClient = useQueryClient();
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle' });
+  const [form, setForm] = useState({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', supervisorId: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const addEmployee = async () => {
     if (!form.name || !form.jobDesc) return;
-    await api.employees.create(form);
+    await api.employees.create({ ...form, supervisorId: form.supervisorId || undefined });
     queryClient.invalidateQueries({ queryKey: ['employees'] });
-    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle' });
+    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', supervisorId: '' });
     setShowAdd(false);
   };
 
   const updateEmployee = async (id: string) => {
-    await api.employees.update(id, form);
+    await api.employees.update(id, { ...form, supervisorId: form.supervisorId || null });
     queryClient.invalidateQueries({ queryKey: ['employees'] });
-    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle' });
+    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', supervisorId: '' });
     setEditingId(null);
   };
 
@@ -997,7 +1043,7 @@ function SettingsPage() {
   };
 
   const startEdit = (emp: Employee) => {
-    setForm({ name: emp.name, rank: emp.rank, jobDesc: emp.jobDesc, model: emp.model });
+    setForm({ name: emp.name, rank: emp.rank, jobDesc: emp.jobDesc, model: emp.model, supervisorId: emp.supervisorId || '' });
     setEditingId(emp.id);
     setShowAdd(false);
   };
@@ -1010,14 +1056,12 @@ function SettingsPage() {
     'opencode/mimo-v2.5-free',
   ];
 
-  const ranks = ['Junior', 'Senior', 'Lead', 'Manager'];
-
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Manajemen Karyawan</h2>
         <button
-          onClick={() => { setShowAdd(true); setEditingId(null); setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle' }); }}
+          onClick={() => { setShowAdd(true); setEditingId(null); setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', supervisorId: '' }); }}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
         >
           + Karyawan
@@ -1033,16 +1077,12 @@ function SettingsPage() {
             placeholder="Nama"
             className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm"
           />
-          <div>
-            <label className="text-xs text-slate-400 mb-1 block">Jabatan</label>
-            <select
-              value={form.rank}
-              onChange={(e) => setForm({ ...form, rank: e.target.value })}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm"
-            >
-              {ranks.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
+          <input
+            value={form.rank}
+            onChange={(e) => setForm({ ...form, rank: e.target.value })}
+            placeholder="Pekerjaan (cth: CEO, CTO, Frontend Developer)"
+            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm"
+          />
           <textarea
             value={form.jobDesc}
             onChange={(e) => setForm({ ...form, jobDesc: e.target.value })}
@@ -1057,6 +1097,19 @@ function SettingsPage() {
           >
             {models.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Atasan</label>
+            <select
+              value={form.supervisorId}
+              onChange={(e) => setForm({ ...form, supervisorId: e.target.value })}
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="">Tidak Ada</option>
+              {employees?.filter((e: Employee) => e.id !== editingId).map((emp: Employee) => (
+                <option key={emp.id} value={emp.id}>{emp.name} ({emp.rank})</option>
+              ))}
+            </select>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={editingId ? () => updateEmployee(editingId) : addEmployee}
@@ -1075,6 +1128,7 @@ function SettingsPage() {
             <tr className="border-b border-slate-700">
               <th className="text-left p-3 text-slate-400 font-medium">Nama</th>
               <th className="text-left p-3 text-slate-400 font-medium">Jabatan</th>
+              <th className="text-left p-3 text-slate-400 font-medium">Atasan</th>
               <th className="text-left p-3 text-slate-400 font-medium">Model</th>
               <th className="text-left p-3 text-slate-400 font-medium">Port</th>
               <th className="text-left p-3 text-slate-400 font-medium">Status</th>
@@ -1086,6 +1140,7 @@ function SettingsPage() {
               <tr key={emp.id} className="border-b border-slate-700/50 hover:bg-slate-700/50">
                 <td className="p-3 font-medium">{emp.name}</td>
                 <td className="p-3 text-slate-400">{emp.rank}</td>
+                <td className="p-3 text-xs text-slate-400">{employees?.find((e: Employee) => e.id === emp.supervisorId)?.name || '-'}</td>
                 <td className="p-3 text-xs text-slate-400">{emp.model}</td>
                 <td className="p-3 text-slate-400">{emp.port}</td>
                 <td className="p-3">

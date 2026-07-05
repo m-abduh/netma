@@ -21,10 +21,24 @@ function buildSystemPrompt(employee: {
   name: string;
   rank: string;
   jobDesc: string;
+  supervisorName?: string;
+  supervisorRank?: string;
+  subordinates?: { name: string; rank: string }[];
 }): string {
-  return `Kamu adalah ${employee.name}, seorang ${employee.rank}.
+  let prompt = `Kamu adalah ${employee.name}, seorang ${employee.rank}.
 Deskripsi pekerjaan: ${employee.jobDesc}
 Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
+
+  if (employee.supervisorName) {
+    prompt += `\nAtasanmu: ${employee.supervisorName} (${employee.supervisorRank}). Jika Bos memberi tugas melalui atasanmu, koordinasikan dengan atasanmu.`;
+  }
+
+  if (employee.subordinates && employee.subordinates.length > 0) {
+    const list = employee.subordinates.map((s) => `${s.name} (${s.rank})`).join(', ');
+    prompt += `\nBawahan langsungmu: ${list}. Jika Bos memberi tugas, buatlah rencana dan tugaskan bawahanmu yang sesuai.`;
+  }
+
+  return prompt;
 }
 
 export async function chatWithEmployee(employee: {
@@ -34,6 +48,9 @@ export async function chatWithEmployee(employee: {
   jobDesc: string;
   model: string;
   port: number;
+  supervisorName?: string;
+  supervisorRank?: string;
+  subordinates?: { name: string; rank: string }[];
 }, prompt: string): Promise<string> {
   const systemPrompt = buildSystemPrompt(employee);
   const fullPrompt = `${systemPrompt}\n\n${prompt}`;

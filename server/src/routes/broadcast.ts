@@ -4,6 +4,17 @@ import { chatWithEmployee } from '../services/opencode';
 
 const router = Router();
 
+async function enrichEmployee(prisma: PrismaClient, emp: any) {
+  const supervisor = emp.supervisorId ? await prisma.employee.findUnique({ where: { id: emp.supervisorId } }) : null;
+  const subordinates = await prisma.employee.findMany({ where: { supervisorId: emp.id } });
+  return {
+    ...emp,
+    supervisorName: supervisor?.name,
+    supervisorRank: supervisor?.rank,
+    subordinates: subordinates.map((s: any) => ({ name: s.name, rank: s.rank })),
+  };
+}
+
 router.post('/', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
   const { prompt } = req.body;
@@ -17,7 +28,8 @@ router.post('/', async (req: Request, res: Response) => {
   for (const emp of employees) {
     try {
       if (!emp.port) throw new Error('Employee has no port assigned');
-      const output = await chatWithEmployee(emp, prompt);
+      const empWithHierarchy = await enrichEmployee(prisma, emp);
+      const output = await chatWithEmployee(empWithHierarchy, prompt);
 
       await prisma.chat.create({
         data: { employeeId: emp.id, role: 'user', content: prompt },

@@ -6,18 +6,11 @@ export interface Employee {
   model: string;
   port: number;
   status: string;
-  workStart: string;
-  workEnd: string;
   positionX: number;
   positionY: number;
+  supervisorId: string | null;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface Edge {
-  id: string;
-  fromId: string;
-  toId: string;
 }
 
 export interface Chat {

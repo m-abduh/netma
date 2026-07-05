@@ -31,10 +31,14 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 router.post('/', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
-  const { name, rank, jobDesc, model } = req.body;
+  const { name, rank, jobDesc, model, supervisorId } = req.body;
+  if (supervisorId) {
+    const sup = await prisma.employee.findUnique({ where: { id: supervisorId } });
+    if (!sup) return res.status(400).json({ error: 'Supervisor not found' });
+  }
   const port = await findAvailablePort(prisma);
   const employee = await prisma.employee.create({
-    data: { name, rank, jobDesc, model, port },
+    data: { name, rank, jobDesc, model, port, supervisorId: supervisorId || null },
   });
   await prisma.auditLog.create({
     data: { actor: 'Bos', action: 'CRUD', target: employee.id, detail: `Tambah karyawan ${name}` },
@@ -44,10 +48,19 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.put('/:id', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
-  const { name, rank, jobDesc, model, positionX, positionY } = req.body;
+  const { name, rank, jobDesc, model, positionX, positionY, supervisorId } = req.body;
+  if (supervisorId === req.params.id) return res.status(400).json({ error: 'Cannot be own supervisor' });
+  if (supervisorId) {
+    const sup = await prisma.employee.findUnique({ where: { id: supervisorId } });
+    if (!sup) return res.status(400).json({ error: 'Supervisor not found' });
+  }
+  const data: any = { name, rank, jobDesc, model };
+  if (positionX !== undefined) data.positionX = positionX;
+  if (positionY !== undefined) data.positionY = positionY;
+  data.supervisorId = supervisorId || null;
   const employee = await prisma.employee.update({
     where: { id: req.params.id },
-    data: { name, rank, jobDesc, model, positionX, positionY },
+    data,
   });
   await prisma.auditLog.create({
     data: { actor: 'Bos', action: 'Edit job', target: employee.id, detail: `Edit karyawan ${name}` },

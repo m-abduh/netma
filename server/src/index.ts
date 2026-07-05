@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { execSync } from 'child_process';
 import { PrismaClient } from '@prisma/client';
 import { employeesRouter } from './routes/employees';
 import { chatRouter } from './routes/chat';
@@ -30,30 +31,10 @@ app.use('/api/logs', logsRouter);
 app.use('/api/employees/:id/files', filesRouter);
 app.use('/api/kanban', kanbanRouter);
 
-app.use('/api/edges', async (req, res) => {
-  if (req.method === 'GET') {
-    const edges = await prisma.edge.findMany();
-    return res.json(edges);
-  }
-  if (req.method === 'POST') {
-    const { fromId, toId } = req.body;
-    const edge = await prisma.edge.create({ data: { fromId, toId } });
-    return res.json(edge);
-  }
-  if (req.method === 'DELETE') {
-    const { id } = req.query;
-    if (id) {
-      await prisma.edge.delete({ where: { id: String(id) } });
-      return res.json({ success: true });
-    }
-    const { fromId, toId } = req.body;
-    const edge = await prisma.edge.findFirst({ where: { fromId, toId } });
-    if (edge) {
-      await prisma.edge.delete({ where: { id: edge.id } });
-    }
-    return res.json({ success: true });
-  }
-  res.status(405).json({ error: 'Method not allowed' });
+app.get('/api/edges', async (_req, res) => {
+  const employees = await prisma.employee.findMany({ where: { NOT: { supervisorId: null } } });
+  const edges = employees.map((e) => ({ id: `${e.supervisorId}-${e.id}`, fromId: e.supervisorId, toId: e.id }));
+  res.json(edges);
 });
 
 app.get('/api/health', (_req, res) => {
@@ -70,6 +51,10 @@ async function start() {
   await prisma.$connect();
 
   await prisma.employee.updateMany({ where: { status: 'online' }, data: { status: 'offline' } });
+
+  try {
+    execSync('pkill -f "opencode serve" 2>/dev/null; for p in $(seq 21000 21999); do fuser -k $p/tcp 2>/dev/null; done', { stdio: 'ignore' });
+  } catch {}
 
   initScheduler(prisma);
   app.listen(PORT, () => {

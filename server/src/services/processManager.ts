@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, execSync, ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { OPENCODE_PASSWORD } from '../config';
@@ -18,9 +18,9 @@ Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
   }
 
   async start(employee: { id: string; name: string; rank: string; jobDesc: string; model: string; port: number }): Promise<{ pid: number }> {
-    if (this.processes.has(employee.port)) {
-      throw new Error(`Port ${employee.port} already in use`);
-    }
+    try {
+      execSync(`fuser -k ${employee.port}/tcp 2>/dev/null`, { stdio: 'ignore' });
+    } catch {}
 
     const configDir = path.join(process.env.HOME || '/tmp', '.opencode', employee.id);
     fs.mkdirSync(configDir, { recursive: true });

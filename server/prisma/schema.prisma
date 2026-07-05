@@ -17,25 +17,16 @@ model Employee {
   status    String   @default("offline")
   positionX Float    @default(0)
   positionY Float    @default(0)
+  supervisorId String?
+  supervisor   Employee?  @relation("Supervisor", fields: [supervisorId], references: [id])
+  subordinates Employee[] @relation("Supervisor")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  edgesFrom   Edge[]      @relation("FromEmployee")
-  edgesTo     Edge[]      @relation("ToEmployee")
   chats       Chat[]
   jobs        Job[]
   files       File[]
   kanbanTasks KanbanTask[]
-}
-
-model Edge {
-  id        String   @id @default(uuid())
-  fromId    String
-  toId      String
-  createdAt DateTime @default(now())
-
-  from Employee @relation("FromEmployee", fields: [fromId], references: [id], onDelete: Cascade)
-  to   Employee @relation("ToEmployee", fields: [toId], references: [id], onDelete: Cascade)
 }
 
 model Chat {

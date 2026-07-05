@@ -24,11 +24,11 @@ export const api = {
   },
   edges: {
     list: () => request<any[]>('/api/edges'),
-    create: (fromId: string, toId: string) => request<any>('/api/edges', { method: 'POST', body: JSON.stringify({ fromId, toId }) }),
-    delete: (fromId: string, toId: string) => request<any>('/api/edges', { method: 'DELETE', body: JSON.stringify({ fromId, toId }) }),
   },
   chat: {
     send: (employeeId: string, prompt: string) => request<any>(`/api/chat/${employeeId}`, { method: 'POST', body: JSON.stringify({ prompt }) }),
+    broadcastToSubordinates: (employeeId: string, prompt: string, response: string) =>
+      request<any>(`/api/chat/${employeeId}/broadcast-to-subordinates`, { method: 'POST', body: JSON.stringify({ prompt, response }) }),
     history: (employeeId: string) => request<any[]>(`/api/chat/${employeeId}/history`),
     recent: () => request<Record<string, any>>('/api/chat/recent'),
   },
