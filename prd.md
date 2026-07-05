@@ -124,7 +124,7 @@ Setiap **AI Karyawan**:
 
 ### Kanban Board
 - Papan Kanban untuk tracking tugas semua AI Karyawan
-- **Default columns**: Backlog → To Do → In Progress → Review → Done
+- **Default columns**: Plan → To Do → In Progress → Review → Done
 - **Columns bisa di-custom** (tambah, edit, hapus, urutkan)
 - Setiap task punya:
   - Judul, deskripsi
