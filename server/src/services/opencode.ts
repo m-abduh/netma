@@ -1,22 +1,5 @@
 import { OPENCODE_PASSWORD } from '../config';
 
-function getModelId(model: string): string {
-  return model.replace('opencode/', '');
-}
-
-function employeeToSystemPrompt(employee: {
-  name: string;
-  rank: string;
-  jobDesc: string;
-  workStart: string;
-  workEnd: string;
-}): string {
-  return `Kamu adalah ${employee.name}, seorang ${employee.rank}.
-Deskripsi pekerjaan: ${employee.jobDesc}
-Jam kerja: ${employee.workStart} - ${employee.workEnd}
-Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.`;
-}
-
 async function opencodeFetch(port: number, path: string, options: RequestInit = {}) {
   const url = `http://127.0.0.1:${port}${path}`;
   const res = await fetch(url, {
@@ -34,6 +17,19 @@ async function opencodeFetch(port: number, path: string, options: RequestInit = 
   return res.json();
 }
 
+function buildSystemPrompt(employee: {
+  name: string;
+  rank: string;
+  jobDesc: string;
+  workStart: string;
+  workEnd: string;
+}): string {
+  return `Kamu adalah ${employee.name}, seorang ${employee.rank}.
+Deskripsi pekerjaan: ${employee.jobDesc}
+Jam kerja: ${employee.workStart} - ${employee.workEnd}
+Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.`;
+}
+
 export async function chatWithEmployee(employee: {
   id: string;
   name: string;
@@ -44,11 +40,12 @@ export async function chatWithEmployee(employee: {
   workStart: string;
   workEnd: string;
 }, prompt: string): Promise<string> {
-  const systemPrompt = employeeToSystemPrompt(employee);
+  const systemPrompt = buildSystemPrompt(employee);
+  const fullPrompt = `${systemPrompt}\n\n${prompt}`;
 
   const sessionRes: any = await opencodeFetch(employee.port, '/api/session', {
     method: 'POST',
-    body: JSON.stringify({ systemPrompt }),
+    body: JSON.stringify({}),
   });
   const sessionId: string = sessionRes.data?.id;
   if (!sessionId) throw new Error('Failed to create session');
@@ -56,7 +53,7 @@ export async function chatWithEmployee(employee: {
   try {
     await opencodeFetch(employee.port, `/api/session/${sessionId}/prompt`, {
       method: 'POST',
-      body: JSON.stringify({ prompt: { text: prompt }, delivery: 'queue' }),
+      body: JSON.stringify({ prompt: { text: fullPrompt }, delivery: 'queue' }),
     });
 
     const maxAttempts = 180;

@@ -15,6 +15,8 @@ import {
   type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import type { Employee } from '@/lib/types';
@@ -272,20 +274,28 @@ function ChatPage() {
           </div>
           <div className="flex-1 overflow-auto p-4 space-y-4">
             {chats?.map((chat: any) => (
-              <div
-                key={chat.id}
-                className={`flex ${chat.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
                 <div
-                  className={`max-w-[80%] p-3 rounded-xl text-sm ${
-                    chat.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-700 text-slate-200'
-                  }`}
+                  key={chat.id}
+                  className={`flex ${chat.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {chat.content}
+                  <div
+                    className={`max-w-[80%] p-3 rounded-xl text-sm ${
+                      chat.role === 'user'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-700 text-slate-200'
+                    }`}
+                  >
+                    {chat.role === 'user' ? (
+                      chat.content
+                    ) : (
+                      <div className="markdown-content">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {chat.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
             ))}
             {sending && (
               <div className="flex justify-start">

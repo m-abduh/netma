@@ -3,15 +3,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && next export",
+    "build": "next build",
     "start": "next start"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.60.2",
     "@xyflow/react": "^12.3.6",
     "next": "^14.2.16",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@tanstack/react-query": "^5.60.2",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "zustand": "^5.0.1"
   },
   "devDependencies": {
