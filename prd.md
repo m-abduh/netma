@@ -108,7 +108,9 @@ Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.
 ### Backend
 - **Express.js** — API server + manajemen proses opencode
 - Node.js, TypeScript
+- **SQLite** (via `better-sqlite3` atau `prisma`) — database karyawan, chat history, job, log
 - `child_process` untuk start/stop opencode
+- `node-cron` untuk scheduler daily job
 
 ### Frontend
 - **Next.js** (static export, di-serve Express)
@@ -139,6 +141,15 @@ Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.
 | POST | /api/chat/:id | Kirim prompt ke karyawan |
 | GET | /api/chat/:id/event | SSE stream real-time |
 | GET | /api/chat/:id/history | Riwayat chat |
+
+### Daily Jobs
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET | /api/jobs | List semua job |
+| POST | /api/jobs | Tambah job baru |
+| PUT | /api/jobs/:id | Edit job |
+| DELETE | /api/jobs/:id | Hapus job |
+| POST | /api/jobs/:id/run-now | Jalankan job manual |
 
 ## 9. Alur Start/Stop Opencode
 
@@ -173,7 +184,66 @@ Setiap karyawan punya file config opencode sendiri (`config_{id}.json`) yang ber
 - Cuma Express yang tahu port dan credential tiap karyawan
 - Dashboard bos harus login dulu
 
-## 10. Contoh Alur
+## 10. Daily Job (Cron Job)
+
+Job adalah tugas otomatis terjadwal buat AI Karyawan. Semua bisa di-custom lewat dashboard.
+
+### Konsep
+```
+Bos tentuin lewat dashboard:
+  Karyawan  : Alex
+  Nama Job  : "Laporan Pagi"
+  Jadwal    : Setiap jam 08:00
+  Prompt    : "Buat laporan progress kemarin"
+  Status    : Aktif
+
+                  ↓ Jam 08:00 trigger
+          Express (node-cron)
+                  ↓
+          Opencode Alex (prompt dikirim)
+                  ↓
+          Hasil disimpan → Bos lihat di dashboard
+```
+
+### Tipe Jadwal
+| Tipe | Contoh | Cron |
+|---|---|---|
+| Daily | Tiap jam 08:00 | `0 8 * * *` |
+| Hourly | Tiap 3 jam | `0 */3 * * *` |
+| Weekly | Tiap Senin 09:00 | `0 9 * * 1` |
+| One-time | 25 Des 00:00 | jadwal sekali |
+| Custom | Bebas | ekspresi cron bebas |
+
+### Data Model
+```json
+{
+  "id": "job_001",
+  "employeeId": "emp_001",
+  "name": "Laporan Pagi",
+  "schedule": "0 8 * * *",
+  "prompt": "Buat laporan progress project kemarin",
+  "status": "active",
+  "lastRun": "2026-07-04T08:00:00Z",
+  "lastResult": "success",
+  "lastOutput": "Laporan berhasil dibuat...",
+  "createdAt": "..."
+}
+```
+
+### Cara Kerja
+1. Express pake `node-cron` sebagai scheduler
+2. Jadwal trigger → Express cek apakah karyawan ON
+3. Jika ON → kirim prompt ke opencode karyawan
+4. Hasil (sukses/gagal + output) disimpan ke SQLite
+5. Dashboard tampilkan: daftar job, log eksekusi, tombol run-now
+
+### Custom
+- Tambah/edit/hapus job dari dashboard (form simpel)
+- **Run Now** — jalanin job kapan aja manual
+- **Aktif/nonaktifkan** job tanpa hapus
+- **Log history** — lihat hasil eksekusi sebelumnya
+
+## 11. Contoh Alur
 
 ```
 Bos buka dashboard → lihat 3 karyawan:
