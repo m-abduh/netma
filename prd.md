@@ -63,6 +63,15 @@ Setiap **AI Karyawan**:
   - Status ON/OFF terlihat di node
   - Klik node → buka chat/profile
   - Karyawan bisa di-drag reposition
+  - **Sambungan node disimpan di database**
+
+### Boss
+- Bos juga seorang AI Karyawan seperti lainnya
+- Punya profil: nama, pangkat ("Boss"), job desc
+- Bisa ON/OFF, punya opencode serve sendiri
+- Bisa di-chat & dikasih prompt seperti karyawan lain
+- Job desc: "Mengawasi dan mengelola seluruh AI Karyawan"
+- Di struktur organisasi, Bos di node paling atas
 
 ### Manajemen Karyawan (CRUD)
 | Field | Keterangan |
@@ -128,19 +137,33 @@ Bos: "Buatkan laporan bulanan"
 
 ## 6. Data Model
 
+### Karyawan
 ```json
 {
   "id": "emp_001",
   "name": "Alex",
   "rank": "Senior Developer",
   "jobDesc": "Bertanggung jawab mengembangkan fitur backend menggunakan Node.js dan TypeScript",
-  "port": 5001,
+  "port": 21001,
   "status": "online",
   "workStart": "08:00",
   "workEnd": "17:00",
+  "positionX": 0,
+  "positionY": 0,
   "createdAt": "..."
 }
 ```
+
+### Sambungan Node
+```json
+{
+  "id": "edge_001",
+  "from": "emp_boss",
+  "to": "emp_001"
+}
+```
+
+Data sambungan disimpan di database. React Flow bakal load & render sesuai data ini. User bebas drag & sambungkan manual. 
 
 System prompt yang dikirim ke opencode tiap kali chat:
 ```
