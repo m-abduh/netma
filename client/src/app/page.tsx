@@ -177,8 +177,7 @@ function EmployeeCard({ employee, onChat, lastChat }: { employee: Employee; onCh
           <span className="text-blue-400">Chat terakhir:</span> {lastChat.content}
         </p>
       )}
-      <div className="flex items-center justify-between mt-4">
-        <span className="text-xs text-slate-500">{employee.workStart} - {employee.workEnd}</span>
+      <div className="flex items-center justify-end mt-4">
         <div className="flex gap-2">
           <button
             onClick={() => onChat(employee.id)}
@@ -469,9 +468,6 @@ function OrganogramPage({ onChat }: { onChat: (id: string) => void }) {
           </div>
           <p className="text-sm text-slate-400 mb-2">{selectedNode.rank}</p>
           <p className="text-sm mb-4">{selectedNode.jobDesc}</p>
-          <div className="text-sm text-slate-400 mb-4">
-            {selectedNode.workStart} - {selectedNode.workEnd}
-          </div>
           <button
             onClick={() => onChat(selectedNode.id)}
             className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
@@ -976,21 +972,21 @@ function SettingsPage() {
   const queryClient = useQueryClient();
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', workStart: '08:00', workEnd: '17:00' });
+  const [form, setForm] = useState({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle' });
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const addEmployee = async () => {
     if (!form.name || !form.jobDesc) return;
     await api.employees.create(form);
     queryClient.invalidateQueries({ queryKey: ['employees'] });
-    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', workStart: '08:00', workEnd: '17:00' });
+    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle' });
     setShowAdd(false);
   };
 
   const updateEmployee = async (id: string) => {
     await api.employees.update(id, form);
     queryClient.invalidateQueries({ queryKey: ['employees'] });
-    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', workStart: '08:00', workEnd: '17:00' });
+    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle' });
     setEditingId(null);
   };
 
@@ -1001,7 +997,7 @@ function SettingsPage() {
   };
 
   const startEdit = (emp: Employee) => {
-    setForm({ name: emp.name, rank: emp.rank, jobDesc: emp.jobDesc, model: emp.model, workStart: emp.workStart, workEnd: emp.workEnd });
+    setForm({ name: emp.name, rank: emp.rank, jobDesc: emp.jobDesc, model: emp.model });
     setEditingId(emp.id);
     setShowAdd(false);
   };
@@ -1021,7 +1017,7 @@ function SettingsPage() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Manajemen Karyawan</h2>
         <button
-          onClick={() => { setShowAdd(true); setEditingId(null); setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', workStart: '08:00', workEnd: '17:00' }); }}
+          onClick={() => { setShowAdd(true); setEditingId(null); setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle' }); }}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
         >
           + Karyawan
@@ -1037,13 +1033,16 @@ function SettingsPage() {
             placeholder="Nama"
             className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm"
           />
-          <select
-            value={form.rank}
-            onChange={(e) => setForm({ ...form, rank: e.target.value })}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm"
-          >
-            {ranks.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Jabatan</label>
+            <select
+              value={form.rank}
+              onChange={(e) => setForm({ ...form, rank: e.target.value })}
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm"
+            >
+              {ranks.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
           <textarea
             value={form.jobDesc}
             onChange={(e) => setForm({ ...form, jobDesc: e.target.value })}
@@ -1058,26 +1057,6 @@ function SettingsPage() {
           >
             {models.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
-          <div className="flex gap-4">
-            <div>
-              <label className="text-xs text-slate-400">Jam Mulai</label>
-              <input
-                value={form.workStart}
-                onChange={(e) => setForm({ ...form, workStart: e.target.value })}
-                type="time"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400">Jam Selesai</label>
-              <input
-                value={form.workEnd}
-                onChange={(e) => setForm({ ...form, workEnd: e.target.value })}
-                type="time"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm mt-1"
-              />
-            </div>
-          </div>
           <div className="flex gap-2">
             <button
               onClick={editingId ? () => updateEmployee(editingId) : addEmployee}
@@ -1095,7 +1074,7 @@ function SettingsPage() {
           <thead>
             <tr className="border-b border-slate-700">
               <th className="text-left p-3 text-slate-400 font-medium">Nama</th>
-              <th className="text-left p-3 text-slate-400 font-medium">Pangkat</th>
+              <th className="text-left p-3 text-slate-400 font-medium">Jabatan</th>
               <th className="text-left p-3 text-slate-400 font-medium">Model</th>
               <th className="text-left p-3 text-slate-400 font-medium">Port</th>
               <th className="text-left p-3 text-slate-400 font-medium">Status</th>

@@ -21,13 +21,10 @@ function buildSystemPrompt(employee: {
   name: string;
   rank: string;
   jobDesc: string;
-  workStart: string;
-  workEnd: string;
 }): string {
   return `Kamu adalah ${employee.name}, seorang ${employee.rank}.
 Deskripsi pekerjaan: ${employee.jobDesc}
-Jam kerja: ${employee.workStart} - ${employee.workEnd}
-Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.`;
+Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
 }
 
 export async function chatWithEmployee(employee: {
@@ -37,8 +34,6 @@ export async function chatWithEmployee(employee: {
   jobDesc: string;
   model: string;
   port: number;
-  workStart: string;
-  workEnd: string;
 }, prompt: string): Promise<string> {
   const systemPrompt = buildSystemPrompt(employee);
   const fullPrompt = `${systemPrompt}\n\n${prompt}`;

@@ -15,8 +15,6 @@ model Employee {
   model     String   @default("opencode/big-pickle")
   port      Int      @unique
   status    String   @default("offline")
-  workStart String   @default("08:00")
-  workEnd   String   @default("17:00")
   positionX Float    @default(0)
   positionY Float    @default(0)
   createdAt DateTime @default(now())

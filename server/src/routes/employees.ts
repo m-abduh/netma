@@ -31,10 +31,10 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 router.post('/', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
-  const { name, rank, jobDesc, model, workStart, workEnd } = req.body;
+  const { name, rank, jobDesc, model } = req.body;
   const port = await findAvailablePort(prisma);
   const employee = await prisma.employee.create({
-    data: { name, rank, jobDesc, model, port, workStart, workEnd },
+    data: { name, rank, jobDesc, model, port },
   });
   await prisma.auditLog.create({
     data: { actor: 'Bos', action: 'CRUD', target: employee.id, detail: `Tambah karyawan ${name}` },
@@ -44,10 +44,10 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.put('/:id', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
-  const { name, rank, jobDesc, model, workStart, workEnd, positionX, positionY } = req.body;
+  const { name, rank, jobDesc, model, positionX, positionY } = req.body;
   const employee = await prisma.employee.update({
     where: { id: req.params.id },
-    data: { name, rank, jobDesc, model, workStart, workEnd, positionX, positionY },
+    data: { name, rank, jobDesc, model, positionX, positionY },
   });
   await prisma.auditLog.create({
     data: { actor: 'Bos', action: 'Edit job', target: employee.id, detail: `Edit karyawan ${name}` },
