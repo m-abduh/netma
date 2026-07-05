@@ -47,6 +47,22 @@ Setiap **AI Karyawan**:
 - Kartu setiap AI Karyawan (nama, pangkat, status ON/OFF, jam kerja)
 - Total karyawan aktif
 - Riwayat chat terbaru tiap karyawan
+- **Struktur Organisasi (React Flow)** — visualisasi pohon hirarki:
+  ```
+           [Bos]
+         ┌──┼──┐
+         │  │  │
+    [Manager] [Lead]
+         │
+    [Senior] [Senior]
+         │
+      [Junior]
+  ```
+  - Drag & Zoom
+  - Node warna beda sesuai pangkat
+  - Status ON/OFF terlihat di node
+  - Klik node → buka chat/profile
+  - Karyawan bisa di-drag reposition
 
 ### Manajemen Karyawan (CRUD)
 | Field | Keterangan |
