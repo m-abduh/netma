@@ -79,8 +79,20 @@ Setiap **AI Karyawan**:
 | Nama | Nama panggilan AI |
 | Pangkat | Junior, Senior, Lead, Manager, dll |
 | Job Desc | Deskripsi pekerjaan. Dibaca AI sebagai system prompt |
+| Model | Model AI yang dipake (dari daftar free opencode) |
 | Port | Port opencode serve (otomatis/assign) |
 | Status | ON/OFF |
+
+### Model Gratis Opencode
+| Model ID | Keterangan |
+|---|---|
+| `opencode/big-pickle` | Model utama, serbaguna |
+| `opencode/deepseek-v4-flash-free` | Ringan, cepat |
+| `opencode/nemotron-3-ultra-free` | General purpose |
+| `opencode/north-mini-code-free` | Khusus coding |
+| `opencode/mimo-v2.5-free` | Multimodal ringan |
+
+Tiap karyawan bisa pilih model beda sesuai kebutuhannya.
 
 ### Chat Real-time
 - Pilih karyawan → buka chat
