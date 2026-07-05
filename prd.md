@@ -117,11 +117,6 @@ Setiap **AI Karyawan**:
 - Tampilan: tabel dengan filter (tanggal, aktor, jenis aksi)
 - Berguna buat monitoring, troubleshooting, evaluasi kinerja AI
 
-### Notifikasi
-- **Telegram Bot** — notifikasi pas job selesai/gagal, atau karyawan error
-- **Dashboard badge** — notifikasi real-time di pojok layar
-- Bisa di-custom tiap notifikasi mau dikirim ke mana
-
 ### Kanban Board
 - Papan Kanban untuk tracking tugas semua AI Karyawan
 - **Default columns**: Plan → To Do → In Progress → Review → Done
