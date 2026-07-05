@@ -1,166 +1,194 @@
-# PRD: Netma — Web Interface untuk Opencode
+# PRD: Netma — Dashboard Manajemen AI Karyawan (Opencode)
 
 ## 1. Ringkasan
-Membangun web interface sebagai frontend untuk opencode yang berjalan di server (VPS/LXC Proxmox). User bisa memberikan perintah melalui website, dan opencode akan mengeksekusi perintah tersebut (membuat project, memanipulasi file, dll) sama persis seperti menggunakan opencode CLI, dengan output yang ditampilkan secara real-time dan mudah dibaca di browser.
+Dashboard berbasis web untuk mengelola AI Karyawan yang didukung oleh opencode. Bos bisa menambahkan karyawan AI dengan pangkat, nama, dan job desc, menyalakan/mematikan mereka, serta ngobrol langsung dengan tiap karyawan secara real-time.
 
-## 2. Arsitektur
+## 2. Konsep
 
 ```
-[Browser User] ──HTTP/SSE──> [Express :3000] ──HTTP──> [opencode serve :4096]
-                │              │                            │
-           Next.js UI    Serve static                  [LXC Proxmox]
-           (browser)     (from .next/)                 [File System]
-                                                       [Git, Shell, Tools]
+[Bos] → Next.js Dashboard
+              │
+        [Express API Server]
+              │
+    ┌─────────┼────────────┐
+    │         │            │
+[A:5001]  [B:5002]    [C:5003]
+opencode  opencode    opencode
+   ON        OFF         ON
+```
+
+Setiap **AI Karyawan**:
+- Punya **nama, pangkat, job desc** → dijadikan system prompt di opencode
+- Saat **ON** → `opencode serve` jalan di port dedicated
+- Saat **OFF** → proses dihentikan
+- Bisa diajak **chat real-time** oleh Bos
+- Mengerjakan tugas sesuai deskripsi kerjanya
+
+## 3. Arsitektur
+
+```
+[Browser] ──HTTP/SSE──> [Next.js (Frontend)] ──HTTP──> [Express API Server] ──HTTP──> [opencode serve :5001]
+                                                              │                        [opencode serve :5002]
+                                                              │                        [opencode serve :5003]
+                                                              │                               │
+                                                         [Manager Proses]              [LXC Proxmox]
+                                                         (start/stop)                 [File System]
 ```
 
 ### Komponen:
-- **Express Server (:3000)**: Backend yang serve static frontend (hasil build Next.js) + proxy API ke opencode. `OPENCODE_PASSWORD` aman di server.
-- **Opencode Server (:4096)**: `opencode serve --hostname 0.0.0.0 --port 4096` (headless, tanpa TUI)
-- **LXC/Proxmox**: Tempat opencode dan file system berjalan
+- **Next.js**: Frontend dashboard + chat interface
+- **Express API Server**: Backend yang handle CRUD karyawan, manage proses opencode, proxy chat
+- **Opencode Serve**: Satu instance per karyawan, masing-masing di port berbeda (5001, 5002, ...)
+- **LXC/Proxmox**: Tempat semua proses berjalan
 
-**Alur build & deploy:**
-```
-Next.js (dev) → next build → static files → Express serve
-                                ↓
-                          .next/ + public/
+## 4. Fitur
 
-## 3. Cara Kerja
+### Dashboard
+- Kartu setiap AI Karyawan (nama, pangkat, status ON/OFF, jam kerja)
+- Total karyawan aktif
+- Riwayat chat terbaru tiap karyawan
 
-1. User buka website (di-serve oleh Express)
-2. User ngetik perintah
-3. Frontend panggil API Express (bukan langsung ke opencode)
-4. Express forward request ke opencode server dengan basic auth
-5. Opencode proses pake LLM + tools
-6. Progress real-time dikirim lewat SSE (Express proxy dari opencode)
-7. Hasil ditampilkan di browser
-
-## 4. API Endpoint yang Digunakan (dari opencode serve)
-
-| Endpoint | Kegunaan |
+### Manajemen Karyawan (CRUD)
+| Field | Keterangan |
 |---|---|
-| `POST /session` | Buat session baru |
-| `POST /session/:id/message` | Kirim prompt ke AI |
-| `POST /session/:id/prompt_async` | Kirim prompt async (tanpa nunggu) |
-| `GET /event` | SSE stream untuk realtime feedback |
-| `GET /session/:id/message` | List pesan dalam session |
-| `GET /session` | List semua session |
-| `GET /file?path=` | List file/directory |
-| `GET /file/content?path=` | Baca isi file |
-| `GET /find?pattern=` | Search konten file |
-| `GET /find/file?query=` | Cari file by name |
-| `POST /session/:id/shell` | Execute shell command |
-| `POST /session/:id/abort` | Batalkan session yang running |
-| `GET /project` | List projects |
-| `GET /agent` | List available agents |
+| Nama | Nama panggilan AI |
+| Pangkat | Junior, Senior, Lead, Manager, dll |
+| Job Desc | Deskripsi pekerjaan. Dibaca AI sebagai system prompt |
+| Port | Port opencode serve (otomatis/assign) |
+| Status | ON/OFF |
 
-## 5. Fitur Frontend
+### Chat Real-time
+- Pilih karyawan → buka chat
+- Kirim prompt → diteruskan ke opencode karyawan tersebut
+- Response real-time via SSE
 
-### Halaman Utama (Chat Interface)
-- Input text untuk mengetik perintah (mirip prompt opencode CLI)
-- Riwayat percakapan per session
-- Streaming output real-time
-- Syntax highlighting untuk kode
-- Diff viewer untuk perubahan file
-- File tree viewer
-- Terminal output viewer
+### Control ON/OFF
+- **ON**: Express `child_process.spawn` → `opencode serve --port XXXX` dengan config khusus sesuai job desc
+- **OFF**: `kill` proses opencode sesuai port
 
-### Session Management
-- List session (aktif & history)
-- Buat session baru
-- Fork session
-- Hapus session
-- Judul session otomatis / bisa diedit
+## 5. Cara Kerja Chat
 
-### File Explorer
-- Navigasi file system
-- Preview file
-- Diff perubahan
+```
+Bos: "Buatkan laporan bulanan"
 
-### Agent & Model Selector
-- Pilih agent (default, custom)
-- Pilih model provider
+1. Dashboard → POST /api/chat/{karyawanId}
+2. Express forward ke opencode :500X
+   dengan parts: [{ type: "text", text: prompt }]
+3. Opencode proses sesuai job desc + system prompt
+4. Response + SSE stream balik ke Bos
+5. Dashboard render real-time
+```
 
-## 6. Alur User
+## 6. Data Model
 
-1. User buka website
-2. Memilih agent/model (opsional)
-3. Mengetik perintah: "Buat project React dengan routing"
-4. Opencode mengeksekusi: bikin folder, init npm, install deps, bikin file-file
-5. Progress muncul real-time di chat
-6. Hasil final: daftar file yang dibuat, struktur project
-7. User bisa lihat file tree, baca file yang dibuat
-8. User bisa lanjut chat: "Tambahin komponen Navbar"
+```json
+{
+  "id": "emp_001",
+  "name": "Alex",
+  "rank": "Senior Developer",
+  "jobDesc": "Bertanggung jawab mengembangkan fitur backend menggunakan Node.js dan TypeScript",
+  "port": 5001,
+  "status": "online",
+  "workStart": "08:00",
+  "workEnd": "17:00",
+  "createdAt": "..."
+}
+```
+
+System prompt yang dikirim ke opencode tiap kali chat:
+```
+Kamu adalah {name}, seorang {rank}.
+Deskripsi pekerjaan: {jobDesc}
+Jam kerja: {workStart} - {workEnd}
+Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.
+```
 
 ## 7. Teknologi
 
 ### Backend
-- **Express.js** — serve frontend statis + proxy API ke opencode
+- **Express.js** — API server + manajemen proses opencode
 - Node.js, TypeScript
+- `child_process` untuk start/stop opencode
 
-### Frontend (Next.js static build, di-serve oleh Express)
-- **Next.js** (static export) — sebagai framework React
-- **Tailwind CSS** — styling
-- **Zustand** — state management client-side (session aktif, UI state, connection status, messages)
-- **TanStack Query (React Query)** — data fetching & caching (list sessions, file tree, data non-realtime)
+### Frontend
+- **Next.js** (static export, di-serve Express)
+- **Tailwind CSS**
+- **Zustand** — state management (daftar karyawan, status, chat aktif)
+- **TanStack Query** — fetching data karyawan
 
 ### Server
 - LXC container di Proxmox
-- opencode (headless server mode: `opencode serve`)
+- `opencode` binary (Go) — satu per karyawan
 - Environment: Linux (Ubuntu/Debian)
 
-## 8. Security
+## 8. API Endpoints
 
-- `OPENCODE_PASSWORD` dan `OPENCODE_URL` disimpan di `.env` Express server
-- Credential **tidak pernah bocor ke browser** (semua request lewat Express)
-- Express bisa ditambah basic auth sendiri untuk proteksi akses website
+### Karyawan
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET | /api/employees | List semua karyawan |
+| POST | /api/employees | Tambah karyawan |
+| PUT | /api/employees/:id | Edit karyawan |
+| DELETE | /api/employees/:id | Hapus karyawan |
+| POST | /api/employees/:id/turn-on | Nyalakan opencode |
+| POST | /api/employees/:id/turn-off | Matikan opencode |
 
-## 9. Keunggulan Dibandingkan opencode Web Bawaan
+### Chat
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| POST | /api/chat/:id | Kirim prompt ke karyawan |
+| GET | /api/chat/:id/event | SSE stream real-time |
+| GET | /api/chat/:id/history | Riwayat chat |
 
-- UI/UX bisa dikustomisasi penuh
-- Bisa ditambahkan fitur spesifik (project templates, dashboard, dll)
-- Integrasi dengan sistem lain
+## 9. Alur Start/Stop Opencode
 
-## 10. Contoh Alur Teknis (Realtime via SSE)
+### Manajemen Port Otomatis
+- Range port: **21000 - 21999** (5 digit, aman dari bentrok service umum)
+- Saat tambah karyawan → assign port pertama yang available dari range
+- Saat **Turn ON** → cek apakah port masih free, jika tidak → cari port baru
+- Saat **Turn OFF** → port kembali ke pool
+
+**Turn ON:**
+```bash
+# Express cek port available dulu
+lsof -i :{port} || echo "port free"
+
+# Lalu start opencode
+opencode serve --port {port} --hostname 127.0.0.1
+
+# Simpan PID, set status = online
+```
+
+**Turn OFF:**
+```bash
+kill {PID}
+# Set status = offline, port dikembalikan ke pool
+```
+
+### Konfigurasi Per Karyawan
+Setiap karyawan punya file config opencode sendiri (`config_{id}.json`) yang berisi model, system prompt, dan tools sesuai job desc. Express membuat file ini saat pertama kali Turn ON.
+
+### Keamanan
+- Password opencode dibedakan tiap karyawan atau pake password bawaan server
+- Cuma Express yang tahu port dan credential tiap karyawan
+- Dashboard bos harus login dulu
+
+## 10. Contoh Alur
 
 ```
-User: "Buat project express dengan struktur folder src/, routes/"
+Bos buka dashboard → lihat 3 karyawan:
+  [🟢 Alex - Senior Dev]  [🔴 Budi - Junior]  [🟢 Citra - Designer]
 
-Frontend -> POST /session
-       <- { id: "sess_123" }
+Bos klik "Turn ON" Budi → Express start opencode :5002 → status ON
 
-Frontend -> POST /session/sess_123/prompt_async
-            { parts: [{ type: "text", text: "..." }] }
-       <- 204 (langsung balik)
+Bos klik Alex → buka chat:
+  Bos: "Buat endpoint API untuk login"
+  Alex (via opencode :5001):
+    - nulis file routes/auth.js
+    - nulis file controllers/authController.js
+    - install bcrypt
+    - response: "✅ Endpoint login selesai dibuat"
+  Bos lihat progress real-time di chat
 
-Frontend -> GET /event (SSE stream buka koneksi)
-
-Server kirim event realtime:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-event: tool/start
-data: { tool: "shell", command: "mkdir -p backend/src backend/routes" }
-
-event: tool/result
-data: { tool: "shell", status: "success", output: "" }
-
-event: tool/start
-data: { tool: "write", path: "backend/src/index.js" }
-
-event: tool/result
-data: { tool: "write", path: "backend/src/index.js", status: "success" }
-
-event: message/part
-data: { type: "text", text: "✅ Project berhasil dibuat. Struktur:\n- src/index.js\n- routes/api.js\n- controllers/" }
-
-event: message/done
-data: { messageID: "msg_456" }
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Frontend render REAL-TIME:
-  - [mkdir] 🟡 lagi bikin folder backend/src...
-  - [mkdir] ✅ selesai
-  - [write] 🟡 lagi nulis backend/src/index.js...
-  - [write] ✅ selesai
-  - 💬 "Project berhasil dibuat"
-  - Tampilin struktur folder
-  - Update file tree
+Bos matiin Budi → Express kill process :5002 → status OFF
 ```
