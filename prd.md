@@ -108,7 +108,7 @@ Kamu adalah AI asisten yang membantu Bos mengerjakan tugas-tugas.
 ### Backend
 - **Express.js** — API server + manajemen proses opencode
 - Node.js, TypeScript
-- **SQLite** (via `better-sqlite3` atau `prisma`) — database karyawan, chat history, job, log
+- **SQLite** (via `better-sqlite3`) — database karyawan, chat history, job, log
 - `child_process` untuk start/stop opencode
 - `node-cron` untuk scheduler daily job
 
