@@ -138,9 +138,15 @@ router.get('/:id/history', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
   const chats = await prisma.chat.findMany({
     where: { employeeId: req.params.id },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'desc' },
   });
   res.json(chats);
+});
+
+router.delete('/:id/history', async (req: Request, res: Response) => {
+  const prisma: PrismaClient = (req as any).prisma;
+  await prisma.chat.deleteMany({ where: { employeeId: req.params.id } });
+  res.json({ success: true });
 });
 
 export { router as chatRouter };

@@ -220,8 +220,8 @@ function ChatPage() {
 
   const activeEmployee = employees?.find((e: Employee) => e.id === activeChat);
   const subordinates = employees?.filter((e: Employee) => e.supervisorId === activeChat) || [];
-  const lastUserMsg = chats?.filter((c: any) => c.role === 'user').slice(-1)[0];
-  const lastAssistantMsg = chats?.filter((c: any) => c.role === 'assistant').slice(-1)[0];
+  const firstAssistantMsg = chats?.find((c: any) => c.role === 'assistant');
+  const lastUserMsg = chats?.find((c: any) => c.role === 'user');
 
   const sendMessage = async () => {
     if (!prompt.trim() || !activeChat) return;
@@ -238,10 +238,10 @@ function ChatPage() {
   };
 
   const broadcastToSubordinates = async () => {
-    if (!activeChat || !lastUserMsg || !lastAssistantMsg) return;
-    setBroadcasting(true);
-    try {
-      await api.chat.broadcastToSubordinates(activeChat, lastUserMsg.content, lastAssistantMsg.content);
+    if (!activeChat || !lastUserMsg || !firstAssistantMsg) return;
+      setBroadcasting(true);
+      try {
+        await api.chat.broadcastToSubordinates(activeChat, lastUserMsg.content, firstAssistantMsg.content);
       refetchChats();
     } catch (err: any) {
       alert(err.message);
@@ -308,12 +308,26 @@ function ChatPage() {
                 <p className="text-xs text-slate-500 mt-1">{subordinates.length} bawahan</p>
               )}
             </div>
-            <button
-              onClick={() => setActiveChat(null)}
-              className="text-sm text-slate-400 hover:text-white"
-            >
-              Tutup
-            </button>
+            <div className="flex gap-2">
+              {chats && chats.length > 0 && (
+                <button
+                  onClick={async () => {
+                    if (!confirm('Hapus semua chat dengan ' + activeEmployee.name + '?')) return;
+                    await api.chat.clearHistory(activeEmployee.id);
+                    refetchChats();
+                  }}
+                  className="text-xs text-red-400 hover:text-red-300"
+                >
+                  Hapus Semua
+                </button>
+              )}
+              <button
+                onClick={() => setActiveChat(null)}
+                className="text-sm text-slate-400 hover:text-white"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
           <div className="flex-1 overflow-auto p-4 space-y-4">
             {chats?.map((chat: any, idx: number) => (
@@ -328,17 +342,13 @@ function ChatPage() {
                         : 'bg-slate-700 text-slate-200'
                     }`}
                   >
-                    {chat.role === 'user' ? (
-                      chat.content
-                    ) : (
-                      <div className="markdown-content">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {chat.content}
-                        </ReactMarkdown>
-                      </div>
-                    )}
+                    <div className="markdown-content">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {chat.content}
+                      </ReactMarkdown>
+                    </div>
                   </div>
-                  {chat.role === 'assistant' && idx === chats.length - 1 && (
+                  {chat.role === 'assistant' && chats.findIndex((c: any) => c.role === 'assistant') === idx && (
                     <div className="flex gap-2 mt-2">
                       {subordinates.length > 0 && (
                         <button
@@ -1055,12 +1065,76 @@ function JobsPage() {
   );
 }
 
+function DirBrowser({ current, onSelect, onClose }: { current: string; onSelect: (path: string) => void; onClose: () => void }) {
+  const [dir, setDir] = useState(current);
+  const { data, isLoading } = useQuery({ queryKey: ['browse', dir], queryFn: () => api.browse.list(dir) });
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={onClose}>
+      <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">Pilih Direktori</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">&times;</button>
+        </div>
+        <div className="text-xs text-slate-400 mb-2 truncate bg-slate-900 rounded px-2 py-1">{dir}</div>
+        <div className="flex-1 overflow-y-auto space-y-0.5 mb-4">
+          {isLoading ? (
+            <div className="text-slate-400 text-sm py-4 text-center">Loading...</div>
+          ) : data?.parent && (
+            <button
+              onClick={() => setDir(data.parent)}
+              className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-700 text-sm text-yellow-400"
+            >
+              ..
+            </button>
+          )}
+          {data?.items?.filter((i: any) => i.type === 'dir').map((item: any) => (
+            <button
+              key={item.name}
+              onClick={() => setDir(`${dir}/${item.name}`)}
+              className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-700 text-sm flex items-center gap-2"
+            >
+              <span className="text-yellow-400">📁</span> {item.name}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm">Batal</button>
+          <button onClick={() => onSelect(dir)} className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm">Pilih Folder Ini</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsPage() {
   const queryClient = useQueryClient();
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
+  const { data: dirInfo } = useQuery({ queryKey: ['project-dir'], queryFn: api.projectDir.info });
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', supervisorId: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [projectDir, setProjectDir] = useState('');
+  const [savingDir, setSavingDir] = useState(false);
+  const [showBrowser, setShowBrowser] = useState(false);
+
+  useEffect(() => {
+    if (dirInfo?.path) setProjectDir(dirInfo.path);
+  }, [dirInfo]);
+
+  const saveProjectDir = async () => {
+    if (!projectDir.trim()) return;
+    setSavingDir(true);
+    try {
+      await api.projectDir.update(projectDir);
+      queryClient.invalidateQueries({ queryKey: ['project-dir'] });
+      alert('Direktori project diupdate');
+    } catch (err: any) {
+      alert('Gagal: ' + err.message);
+    } finally {
+      setSavingDir(false);
+    }
+  };
 
   const addEmployee = async () => {
     if (!form.name || !form.jobDesc) return;
@@ -1202,6 +1276,29 @@ function SettingsPage() {
           </tbody>
         </table>
       </div>
+
+      <div className="bg-slate-800 rounded-xl p-6 mt-6 max-w-lg">
+        <h3 className="font-semibold mb-4">Direktori Project</h3>
+        <p className="text-xs text-slate-400 mb-3">Semua pekerjaan AI akan dilakukan di direktori ini.</p>
+        <div className="text-xs text-slate-400 mb-2 truncate bg-slate-900 rounded px-3 py-2">{projectDir || '(belum diset)'}</div>
+        <div className="flex gap-2">
+          <button onClick={() => setShowBrowser(true)} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm">Browse</button>
+          <button
+            onClick={saveProjectDir}
+            disabled={savingDir || !projectDir.trim()}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm disabled:opacity-50"
+          >
+            {savingDir ? '...' : 'Simpan'}
+          </button>
+        </div>
+      </div>
+      {showBrowser && (
+        <DirBrowser
+          current={projectDir}
+          onSelect={(p) => { setProjectDir(p); setShowBrowser(false); }}
+          onClose={() => setShowBrowser(false)}
+        />
+      )}
     </div>
   );
 }

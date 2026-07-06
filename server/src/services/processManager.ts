@@ -23,6 +23,7 @@ Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
     } catch {}
 
     const configDir = path.join(process.env.HOME || '/tmp', '.opencode', employee.id);
+    fs.rmSync(configDir, { recursive: true, force: true });
     fs.mkdirSync(configDir, { recursive: true });
 
     const configPath = path.join(configDir, 'config.json');
@@ -45,44 +46,39 @@ Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    this.processes.set(employee.port, { process: proc, port: employee.port });
+    const entry: ProcessEntry = { process: proc, port: employee.port };
+    this.processes.set(employee.port, entry);
+
+    let startReject: ((err: Error) => void) | null = null;
 
     proc.on('exit', (code) => {
-      this.processes.delete(employee.port);
+      if (this.processes.get(employee.port) === entry) {
+        this.processes.delete(employee.port);
+      }
+      if (startReject && code !== 0 && code !== null) {
+        startReject(new Error(`opencode exited with code ${code}`));
+      }
     });
 
     proc.on('error', (err) => {
-      this.processes.delete(employee.port);
-      throw err;
+      if (this.processes.get(employee.port) === entry) {
+        this.processes.delete(employee.port);
+      }
+      startReject?.(err);
     });
 
     await new Promise<void>((resolve, reject) => {
+      startReject = reject;
       const timeout = setTimeout(() => {
         reject(new Error('Timeout waiting for opencode to start'));
       }, 30000);
 
-      proc.stdout?.on('data', (data: Buffer) => {
-        const msg = data.toString();
-        if (msg.includes('listening') || msg.includes('started') || msg.includes('Server')) {
-          clearTimeout(timeout);
-          resolve();
-        }
-      });
-
-      proc.stderr?.on('data', (data: Buffer) => {
-        const msg = data.toString();
-        if (msg.includes('listening') || msg.includes('started') || msg.includes('Server')) {
-          clearTimeout(timeout);
-          resolve();
-        }
-      });
-
-      proc.on('exit', (code) => {
-        clearTimeout(timeout);
-        if (code !== 0 && code !== null) {
-          reject(new Error(`opencode exited with code ${code}`));
-        }
-      });
+      const poll = () => {
+        fetch(`http://127.0.0.1:${employee.port}/`, { signal: AbortSignal.timeout(3000) })
+          .then(() => { clearTimeout(timeout); resolve(); })
+          .catch(() => { setTimeout(poll, 500); });
+      };
+      setTimeout(poll, 1000);
     });
 
     return { pid: proc.pid || 0 };

@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs/promises';
+import fsSync from 'fs';
+import os from 'os';
 import path from 'path';
 import { execSync } from 'child_process';
 import { PrismaClient } from '@prisma/client';
@@ -40,8 +42,39 @@ app.get('/api/edges', async (_req, res) => {
   res.json(edges);
 });
 
+app.get('/api/browse/list', async (req, res) => {
+  const dir = (req.query.dir as string) || os.homedir();
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const items = await Promise.all(entries.map(async (e) => {
+      const full = path.join(dir, e.name);
+      let size = 0;
+      if (e.isFile()) {
+        try { const s = await fs.stat(full); size = s.size; } catch {}
+      }
+      return { name: e.name, type: e.isDirectory() ? 'dir' : 'file', size };
+    }));
+    items.sort((a, b) => (a.type === 'dir' ? 0 : 1) - (b.type === 'dir' ? 0 : 1) || a.name.localeCompare(b.name));
+    res.json({ current: dir, parent: path.dirname(dir), items });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/project-dir', (_req, res) => {
   res.json({ path: getProjectDir() });
+});
+
+app.put('/api/project-dir', (req, res) => {
+  const { path: newPath } = req.body;
+  if (!newPath) return res.status(400).json({ error: 'path required' });
+  const configPath = path.join(__dirname, '../project-dir.json');
+  try {
+    fsSync.writeFileSync(configPath, JSON.stringify({ path: newPath }, null, 2));
+    res.json({ path: getProjectDir() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/project-dir/list', async (req, res) => {

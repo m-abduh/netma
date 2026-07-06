@@ -30,6 +30,7 @@ export const api = {
     broadcastToSubordinates: (employeeId: string, prompt: string, response: string) =>
       request<any>(`/api/chat/${employeeId}/broadcast-to-subordinates`, { method: 'POST', body: JSON.stringify({ prompt, response }) }),
     history: (employeeId: string) => request<any[]>(`/api/chat/${employeeId}/history`),
+    clearHistory: (employeeId: string) => request<any>(`/api/chat/${employeeId}/history`, { method: 'DELETE' }),
     recent: () => request<Record<string, any>>('/api/chat/recent'),
   },
   jobs: {
@@ -50,8 +51,12 @@ export const api = {
   },
   projectDir: {
     info: () => request<any>('/api/project-dir'),
+    update: (path: string) => request<any>('/api/project-dir', { method: 'PUT', body: JSON.stringify({ path }) }),
     list: (dir?: string) => request<any>(`/api/project-dir/list${dir ? `?dir=${encodeURIComponent(dir)}` : ''}`),
     read: (file: string) => request<any>(`/api/project-dir/read?file=${encodeURIComponent(file)}`),
+  },
+  browse: {
+    list: (dir?: string) => request<any>(`/api/browse/list${dir ? `?dir=${encodeURIComponent(dir)}` : ''}`),
   },
   kanban: {
     columns: {

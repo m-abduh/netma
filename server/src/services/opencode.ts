@@ -53,42 +53,32 @@ export async function chatWithEmployee(employee: {
   subordinates?: { name: string; rank: string }[];
 }, prompt: string): Promise<string> {
   const systemPrompt = buildSystemPrompt(employee);
-  const fullPrompt = `${systemPrompt}\n\n${prompt}`;
 
-  const sessionRes: any = await opencodeFetch(employee.port, '/api/session', {
+  const sessionRes: any = await opencodeFetch(employee.port, '/session', {
     method: 'POST',
     body: JSON.stringify({}),
   });
-  const sessionId: string = sessionRes.data?.id;
+  const sessionId: string = sessionRes.id || sessionRes.data?.id;
   if (!sessionId) throw new Error('Failed to create session');
 
   try {
-    await opencodeFetch(employee.port, `/api/session/${sessionId}/prompt`, {
+    const msgRes: any = await opencodeFetch(employee.port, `/session/${sessionId}/message`, {
       method: 'POST',
-      body: JSON.stringify({ prompt: { text: fullPrompt }, delivery: 'queue' }),
+      body: JSON.stringify({
+        system: systemPrompt,
+        parts: [{ type: 'text', text: prompt }],
+      }),
+      signal: AbortSignal.timeout(180000),
     });
 
-    const maxAttempts = 180;
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise((r) => setTimeout(r, 1000));
-      const historyRes: any = await opencodeFetch(employee.port, `/api/session/${sessionId}/history`);
-      const events: any[] = historyRes.data || [];
+    const parts: any[] = msgRes.parts || [];
+    const text = parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('').trim();
+    if (text) return text;
 
-      const textEnded = events.find((e: any) => e.type === 'session.next.text.ended');
-      if (textEnded?.data?.text) {
-        return textEnded.data.text;
-      }
+    if (msgRes.info?.content) return msgRes.info.content;
 
-      const stepEnded = events.find((e: any) => e.type === 'session.next.step.ended');
-      if (stepEnded && stepEnded.data?.finish === 'stop') {
-        const precedingText = events.find((e: any) => e.type === 'session.next.text.ended');
-        if (precedingText?.data?.text) return precedingText.data.text;
-        break;
-      }
-    }
-
-    throw new Error('Timeout waiting for response');
+    throw new Error('Empty response from opencode');
   } finally {
-    opencodeFetch(employee.port, `/api/session/${sessionId}`, { method: 'DELETE' }).catch(() => {});
+    opencodeFetch(employee.port, `/session/${sessionId}`, { method: 'DELETE' }).catch(() => {});
   }
 }
