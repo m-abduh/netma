@@ -104,23 +104,20 @@ const ChatInput = memo(function ChatInput({
   return (
     <div className="p-4 border-t border-slate-700">
       <div className="flex gap-2 items-center">
-        <button
-          onClick={() => onModeChange(mode === 'plan' ? 'build' : 'plan')}
-          className={`relative w-14 h-7 rounded-full transition-colors shrink-0 ${
-            mode === 'build' ? 'bg-emerald-600' : 'bg-slate-600'
-          }`}
-          title={mode === 'plan' ? 'Mode: Plan' : 'Mode: Build'}
-        >
-          <span
-            className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-              mode === 'build' ? 'translate-x-7' : 'translate-x-0.5'
-            }`}
-          />
-          <span className="absolute inset-0 flex items-center justify-between px-1.5 text-[10px] font-semibold text-white/80">
-            <span className={mode === 'plan' ? 'opacity-100' : 'opacity-0'}>P</span>
-            <span className={mode === 'build' ? 'opacity-100' : 'opacity-0'}>B</span>
-          </span>
-        </button>
+        <div className="flex bg-slate-800 rounded-lg p-0.5 text-xs shrink-0">
+          <button
+            onClick={() => onModeChange('plan')}
+            className={`px-3 py-1.5 rounded-md transition-colors ${mode === 'plan' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            Plan
+          </button>
+          <button
+            onClick={() => onModeChange('build')}
+            className={`px-3 py-1.5 rounded-md transition-colors ${mode === 'build' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            Build
+          </button>
+        </div>
         <input
           ref={inputRef}
           value={text}
