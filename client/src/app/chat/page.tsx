@@ -9,42 +9,20 @@ import { useStore } from '@/store';
 import type { Employee } from '@/lib/types';
 
 const ChatHeader = memo(function ChatHeader({
-  name, rank, subordinates, hasChats, mode, onModeChange, onClear,
+  name, rank, subordinates, hasChats, onClear,
 }: {
-  name: string; rank: string; subordinates: number; hasChats: boolean; mode: 'plan' | 'build'; onModeChange: (m: 'plan' | 'build') => void; onClear: () => void;
+  name: string; rank: string; subordinates: number; hasChats: boolean; onClear: () => void;
 }) {
   return (
     <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div>
-          <h3 className="font-bold">{name}</h3>
-          <p className="text-sm text-slate-400">{rank}</p>
-          {subordinates > 0 && <p className="text-xs text-slate-500 mt-1">{subordinates} bawahan</p>}
-        </div>
-        <button
-          onClick={() => onModeChange(mode === 'plan' ? 'build' : 'plan')}
-          className={`relative w-14 h-7 rounded-full transition-colors ${
-            mode === 'build' ? 'bg-emerald-600' : 'bg-slate-600'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-              mode === 'build' ? 'translate-x-7' : 'translate-x-0.5'
-            }`}
-          />
-          <span className={`absolute inset-0 flex items-center justify-between px-1.5 text-[10px] font-semibold ${
-            mode === 'plan' ? 'text-blue-200' : 'text-emerald-200'
-          }`}>
-            <span className={mode === 'plan' ? 'opacity-100' : 'opacity-0'}>P</span>
-            <span className={mode === 'build' ? 'opacity-100' : 'opacity-0'}>B</span>
-          </span>
-        </button>
+      <div>
+        <h3 className="font-bold">{name}</h3>
+        <p className="text-sm text-slate-400">{rank}</p>
+        {subordinates > 0 && <p className="text-xs text-slate-500 mt-1">{subordinates} bawahan</p>}
       </div>
-      <div className="flex items-center gap-3">
-        {hasChats && (
-          <button onClick={onClear} className="text-xs text-red-400 hover:text-red-300">Hapus</button>
-        )}
-      </div>
+      {hasChats && (
+        <button onClick={onClear} className="text-xs text-red-400 hover:text-red-300">Hapus</button>
+      )}
     </div>
   );
 });
@@ -110,9 +88,9 @@ const ChatMessages = memo(function ChatMessages({
 });
 
 const ChatInput = memo(function ChatInput({
-  isStreaming, onSend, onStop,
+  isStreaming, mode, onModeChange, onSend, onStop,
 }: {
-  isStreaming: boolean; onSend: (msg: string) => void; onStop: () => void;
+  isStreaming: boolean; mode: 'plan' | 'build'; onModeChange: (m: 'plan' | 'build') => void; onSend: (msg: string) => void; onStop: () => void;
 }) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -125,7 +103,7 @@ const ChatInput = memo(function ChatInput({
 
   return (
     <div className="p-4 border-t border-slate-700">
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <input
           ref={inputRef}
           value={text}
@@ -135,10 +113,27 @@ const ChatInput = memo(function ChatInput({
           className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
           disabled={isStreaming}
         />
+        <button
+          onClick={() => onModeChange(mode === 'plan' ? 'build' : 'plan')}
+          className={`relative w-14 h-7 rounded-full transition-colors shrink-0 ${
+            mode === 'build' ? 'bg-emerald-600' : 'bg-slate-600'
+          }`}
+          title={mode === 'plan' ? 'Mode: Plan' : 'Mode: Build'}
+        >
+          <span
+            className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+              mode === 'build' ? 'translate-x-7' : 'translate-x-0.5'
+            }`}
+          />
+          <span className="absolute inset-0 flex items-center justify-between px-1.5 text-[10px] font-semibold text-white/80">
+            <span className={mode === 'plan' ? 'opacity-100' : 'opacity-0'}>P</span>
+            <span className={mode === 'build' ? 'opacity-100' : 'opacity-0'}>B</span>
+          </span>
+        </button>
         {isStreaming ? (
-          <button onClick={onStop} className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm">Stop</button>
+          <button onClick={onStop} className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm shrink-0">Stop</button>
         ) : (
-          <button onClick={handleSend} disabled={!text.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm disabled:opacity-50">Kirim</button>
+          <button onClick={handleSend} disabled={!text.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm shrink-0 disabled:opacity-50">Kirim</button>
         )}
       </div>
     </div>
@@ -337,8 +332,6 @@ export default function ChatPage() {
               rank={activeEmployee.rank}
               subordinates={subordinates.length}
               hasChats={!!(displayChats && displayChats.length > 0)}
-              mode={mode}
-              onModeChange={setMode}
               onClear={handleClear}
             />
             <div className="flex-1 overflow-auto p-4 space-y-4">
@@ -354,6 +347,8 @@ export default function ChatPage() {
             </div>
             <ChatInput
               isStreaming={isStreaming}
+              mode={mode}
+              onModeChange={setMode}
               onSend={sendMessage}
               onStop={handleStop}
             />
