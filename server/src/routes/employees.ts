@@ -54,10 +54,14 @@ router.put('/:id', async (req: Request, res: Response) => {
     const sup = await prisma.employee.findUnique({ where: { id: supervisorId } });
     if (!sup) return res.status(400).json({ error: 'Supervisor not found' });
   }
-  const data: any = { name, rank, jobDesc, model };
+  const data: any = {};
+  if (name !== undefined) data.name = name;
+  if (rank !== undefined) data.rank = rank;
+  if (jobDesc !== undefined) data.jobDesc = jobDesc;
+  if (model !== undefined) data.model = model;
   if (positionX !== undefined) data.positionX = positionX;
   if (positionY !== undefined) data.positionY = positionY;
-  data.supervisorId = supervisorId || null;
+  if (supervisorId !== undefined) data.supervisorId = supervisorId || null;
   const employee = await prisma.employee.update({
     where: { id: req.params.id },
     data,
