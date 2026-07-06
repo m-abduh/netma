@@ -6,13 +6,13 @@ import {
   ReactFlow,
   Background,
   Controls,
-  useNodesState,
-  useEdgesState,
   Handle,
   Position,
   MarkerType,
+  applyNodeChanges,
   type Node,
   type Edge,
+  type OnNodesChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import ReactMarkdown from 'react-markdown';
@@ -420,11 +420,11 @@ function EmployeeNode({ data }: { data: any }) {
       className="px-4 py-3 rounded-xl border-2 text-center shadow-lg cursor-pointer hover:brightness-110 transition-all"
       style={{ borderColor: data.color, backgroundColor: '#1e293b', minWidth: 150 }}
     >
-      <Handle type="target" position={Position.Top} className="!border-slate-600" />
+      <Handle type="target" position={Position.Top} isConnectable={false} className="!border-slate-600" />
       <div className="text-lg font-bold">{data.label}</div>
       <div className="text-xs text-slate-400">{data.rank}</div>
       <div className={`mt-2 mx-auto w-2.5 h-2.5 rounded-full ${data.online ? 'bg-green-400' : 'bg-red-400'}`} />
-      <Handle type="source" position={Position.Bottom} className="!border-slate-600" />
+      <Handle type="source" position={Position.Bottom} isConnectable={false} className="!border-slate-600" />
     </div>
   );
 }
@@ -433,51 +433,46 @@ const nodeTypes = { employee: EmployeeNode };
 
 function OrganogramPage({ onChat }: { onChat: (id: string) => void }) {
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node>([]);
-  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [rfNodes, setRfNodes] = useState<Node[]>([]);
+  const [rfEdges, setRfEdges] = useState<Edge[]>([]);
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const [selectedNode, setSelectedNode] = useState<Employee | null>(null);
+  const initialized = useRef(false);
+
+  const onNodesChange: OnNodesChange = useCallback(
+    (changes) => setRfNodes((prev) => applyNodeChanges(changes, prev)),
+    [],
+  );
 
   useEffect(() => {
-    if (!employees) return;
+    if (!employees || initialized.current) return;
+    initialized.current = true;
 
-    setRfNodes((nds) =>
-      employees.map((emp) => {
-        const existing = nds.find((n) => n.id === emp.id);
-        return {
-          id: emp.id,
-          type: 'employee',
-          position: existing ? existing.position : { x: emp.positionX || 0, y: emp.positionY || 0 },
-          data: {
-            label: emp.name,
-            rank: emp.rank,
-            color: getRankColor(emp.rank),
-            online: emp.status === 'online',
-            employeeId: emp.id,
-          },
-        };
-      })
+    setRfNodes(
+      employees.map((emp) => ({
+        id: emp.id,
+        type: 'employee',
+        position: { x: emp.positionX || 0, y: emp.positionY || 0 },
+        data: {
+          label: emp.name,
+          rank: emp.rank,
+          color: getRankColor(emp.rank),
+          online: emp.status === 'online',
+          employeeId: emp.id,
+        },
+      }))
     );
 
-    setRfEdges((eds) => {
-      const existing = new Map(eds.map((e) => [e.id, e]));
-      const newEdges = employees
+    setRfEdges(
+      employees
         .filter((e: Employee) => e.supervisorId)
-        .map((e: Employee) => {
-          const id = `${e.supervisorId}-${e.id}`;
-          return existing.get(id) || {
-            id,
-            source: e.supervisorId!,
-            target: e.id,
-            type: 'smoothstep' as const,
-            animated: true,
-            style: { stroke: '#475569', strokeWidth: 2 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' },
-          };
-        });
-      return newEdges;
-    });
+        .map((e: Employee) => ({
+          id: `${e.supervisorId}-${e.id}`,
+          source: e.supervisorId!,
+          target: e.id,
+        }))
+    );
   }, [employees]);
 
   const onNodeClick = useCallback((_event: any, node: any) => {
@@ -501,13 +496,16 @@ function OrganogramPage({ onChat }: { onChat: (id: string) => void }) {
           nodes={rfNodes}
           edges={rfEdges}
           onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           fitView
           minZoom={0.3}
           maxZoom={2}
+          nodesConnectable={false}
+          edgesFocusable={false}
+          nodesDraggable={true}
+          defaultEdgeOptions={{ type: 'default', style: { stroke: '#475569', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' } }}
           deleteKeyCode={null}
           className="bg-slate-900/50 rounded-xl border border-slate-700"
         >
