@@ -39,12 +39,13 @@ if [ ! -f .env ]; then
     cp .env.example .env
     echo "  Created .env from .env.example"
   else
+    local_pass=$(openssl rand -base64 24 2>/dev/null || echo "CHANGE_ME")
     cat > .env <<-EOF
 PORT=3001
 NODE_ENV=production
-OPENCODE_SERVER_PASSWORD=netma-secret
+OPENCODE_SERVER_PASSWORD=$local_pass
 EOF
-    echo "  Created default .env"
+    echo "  Created default .env with random password"
   fi
 else
   echo "  .env already exists, skipping"

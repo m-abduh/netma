@@ -7,11 +7,6 @@ module.exports = {
       args: 'dist/index.js',
       instances: 1,
       exec_mode: 'fork',
-      env: {
-        PORT: '3001',
-        NODE_ENV: 'production',
-        OPENCODE_SERVER_PASSWORD: 'netma-secret',
-      },
       env_file: '.env',
       error_file: '../logs/netma-error.log',
       out_file: '../logs/netma-out.log',
