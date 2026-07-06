@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, memo } from 'react';
+import { useState, useRef, useCallback, memo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -18,9 +18,7 @@ const ChatHeader = memo(function ChatHeader({
       <div>
         <h3 className="font-bold">{name}</h3>
         <p className="text-sm text-slate-400">{rank}</p>
-        {subordinates > 0 && (
-          <p className="text-xs text-slate-500 mt-1">{subordinates} bawahan</p>
-        )}
+        {subordinates > 0 && <p className="text-xs text-slate-500 mt-1">{subordinates} bawahan</p>}
       </div>
       {hasChats && (
         <button onClick={onClear} className="text-xs text-red-400 hover:text-red-300">Hapus</button>
@@ -90,17 +88,27 @@ const ChatMessages = memo(function ChatMessages({
 });
 
 const ChatInput = memo(function ChatInput({
-  prompt, setPrompt, isStreaming, onSend, onStop,
+  isStreaming, onSend, onStop,
 }: {
-  prompt: string; setPrompt: (v: string) => void; isStreaming: boolean; onSend: () => void; onStop: () => void;
+  isStreaming: boolean; onSend: (msg: string) => void; onStop: () => void;
 }) {
+  const [text, setText] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSend = () => {
+    if (!text.trim()) return;
+    onSend(text);
+    setText('');
+  };
+
   return (
     <div className="p-4 border-t border-slate-700">
       <div className="flex gap-2">
         <input
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && onSend()}
+          ref={inputRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Ketik prompt..."
           className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
           disabled={isStreaming}
@@ -108,7 +116,7 @@ const ChatInput = memo(function ChatInput({
         {isStreaming ? (
           <button onClick={onStop} className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm">Stop</button>
         ) : (
-          <button onClick={onSend} disabled={!prompt.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm disabled:opacity-50">Kirim</button>
+          <button onClick={handleSend} disabled={!text.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm disabled:opacity-50">Kirim</button>
         )}
       </div>
     </div>
@@ -146,8 +154,6 @@ const EmployeeList = memo(function EmployeeList({
 
 export default function ChatPage() {
   const { activeChat, setActiveChat } = useStore();
-  const [prompt, setPrompt] = useState('');
-  const [broadcasting, setBroadcasting] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -166,16 +172,12 @@ export default function ChatPage() {
   const subordinates = employees?.filter((e: Employee) => e.supervisorId === activeChat) || [];
   const employeeList = employees?.filter((e: Employee) => e.name !== 'Bos') || [];
 
-  const sendMessage = async () => {
-    if (!prompt.trim() || !activeChat) return;
-    const msg = prompt;
-    setPrompt('');
+  const sendMessage = useCallback(async (msg: string) => {
+    if (!msg.trim() || !activeChat) return;
     setIsStreaming(true);
     setStreamingContent('');
     setStreamingReasoning('');
-
-    const abortController = new AbortController();
-    streamAbortRef.current = abortController;
+    streamAbortRef.current = new AbortController();
 
     try {
       const response = await fetch(
@@ -184,7 +186,7 @@ export default function ChatPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: msg }),
-          signal: abortController.signal,
+          signal: streamAbortRef.current.signal,
         }
       );
       if (!response.ok) {
@@ -222,37 +224,37 @@ export default function ChatPage() {
       streamAbortRef.current = null;
       refetchChats();
     }
-  };
+  }, [activeChat]);
 
-  const broadcastToSubordinates = async () => {
+  const handleStop = useCallback(() => {
+    streamAbortRef.current?.abort();
+    setIsStreaming(false);
+  }, []);
+
+  const handleClear = useCallback(async () => {
+    if (!activeEmployee || !confirm('Hapus semua chat dengan ' + activeEmployee.name + '?')) return;
+    await api.chat.clearHistory(activeEmployee.id);
+    refetchChats();
+  }, [activeEmployee]);
+
+  const handleBroadcast = useCallback(() => {
     if (!activeChat) return;
-    setBroadcasting(true);
-    try {
-      await api.chat.broadcastToSubordinates(activeChat, '', '');
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setBroadcasting(false);
-    }
-  };
+    api.chat.broadcastToSubordinates(activeChat, '', '').catch(() => {});
+  }, [activeChat]);
 
-  const addToKanban = async (chatContent: string) => {
+  const handleAddKanban = useCallback((chatContent: string) => {
     const firstCol = columns?.[0];
     if (!firstCol) { alert('Buat kolom Kanban dulu'); return; }
-    try {
-      await api.kanban.tasks.create({
-        columnId: firstCol.id,
-        title: chatContent.split('\n')[0].slice(0, 80) || 'Plan',
-        description: chatContent,
-        employeeId: activeChat,
-        source: 'chat',
-      });
+    api.kanban.tasks.create({
+      columnId: firstCol.id,
+      title: chatContent.split('\n')[0].slice(0, 80) || 'Plan',
+      description: chatContent,
+      employeeId: activeChat,
+      source: 'chat',
+    }).then(() => {
       queryClient.invalidateQueries({ queryKey: ['kanban-columns'] });
-      alert('Task berhasil ditambahkan ke Kanban');
-    } catch (err: any) {
-      alert('Gagal: ' + err.message);
-    }
-  };
+    }).catch((err) => alert('Gagal: ' + err.message));
+  }, [columns, activeChat, queryClient]);
 
   return (
     <div className="flex h-full">
@@ -268,11 +270,7 @@ export default function ChatPage() {
               rank={activeEmployee.rank}
               subordinates={subordinates.length}
               hasChats={!!(chats && chats.length > 0)}
-              onClear={async () => {
-                if (!confirm('Hapus semua chat dengan ' + activeEmployee.name + '?')) return;
-                await api.chat.clearHistory(activeEmployee.id);
-                refetchChats();
-              }}
+              onClear={handleClear}
             />
             <div className="flex-1 overflow-auto p-4 space-y-4">
               {isStreaming && <StreamBubble content={streamingContent} reasoning={streamingReasoning} />}
@@ -280,17 +278,15 @@ export default function ChatPage() {
                 <ChatMessages
                   chats={chats}
                   subordinates={subordinates}
-                  onBroadcast={broadcastToSubordinates}
-                  onAddKanban={addToKanban}
+                  onBroadcast={handleBroadcast}
+                  onAddKanban={handleAddKanban}
                 />
               )}
             </div>
             <ChatInput
-              prompt={prompt}
-              setPrompt={setPrompt}
               isStreaming={isStreaming}
               onSend={sendMessage}
-              onStop={() => { streamAbortRef.current?.abort(); setIsStreaming(false); }}
+              onStop={handleStop}
             />
           </>
         )}
