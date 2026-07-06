@@ -442,32 +442,42 @@ function OrganogramPage({ onChat }: { onChat: (id: string) => void }) {
   useEffect(() => {
     if (!employees) return;
 
-    const nodes = employees.map((emp) => ({
-      id: emp.id,
-      type: 'employee',
-      position: { x: emp.positionX || 0, y: emp.positionY || 0 },
-      data: {
-        label: emp.name,
-        rank: emp.rank,
-        color: getRankColor(emp.rank),
-        online: emp.status === 'online',
-        employeeId: emp.id,
-      },
-    }));
-    setRfNodes(nodes);
+    setRfNodes((nds) =>
+      employees.map((emp) => {
+        const existing = nds.find((n) => n.id === emp.id);
+        return {
+          id: emp.id,
+          type: 'employee',
+          position: existing ? existing.position : { x: emp.positionX || 0, y: emp.positionY || 0 },
+          data: {
+            label: emp.name,
+            rank: emp.rank,
+            color: getRankColor(emp.rank),
+            online: emp.status === 'online',
+            employeeId: emp.id,
+          },
+        };
+      })
+    );
 
-    const edges = employees
-      .filter((e: Employee) => e.supervisorId)
-      .map((e: Employee) => ({
-        id: `${e.supervisorId}-${e.id}`,
-        source: e.supervisorId!,
-        target: e.id,
-        type: 'smoothstep' as const,
-        animated: true,
-        style: { stroke: '#475569', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' },
-      }));
-    setRfEdges(edges);
+    setRfEdges((eds) => {
+      const existing = new Map(eds.map((e) => [e.id, e]));
+      const newEdges = employees
+        .filter((e: Employee) => e.supervisorId)
+        .map((e: Employee) => {
+          const id = `${e.supervisorId}-${e.id}`;
+          return existing.get(id) || {
+            id,
+            source: e.supervisorId!,
+            target: e.id,
+            type: 'smoothstep' as const,
+            animated: true,
+            style: { stroke: '#475569', strokeWidth: 2 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' },
+          };
+        });
+      return newEdges;
+    });
   }, [employees]);
 
   const onNodeClick = useCallback((_event: any, node: any) => {
@@ -478,8 +488,7 @@ function OrganogramPage({ onChat }: { onChat: (id: string) => void }) {
   const onNodeDragStop = useCallback((_event: any, node: any) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      api.employees.update(node.id, { positionX: node.position.x, positionY: node.position.y });
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      api.employees.update(node.id, { positionX: Math.round(node.position.x), positionY: Math.round(node.position.y) });
     }, 500);
   }, []);
 
