@@ -32,6 +32,23 @@ export default function ChatPage() {
   const firstAssistantMsg = chats?.find((c: any) => c.role === 'assistant');
   const lastUserMsg = chats?.find((c: any) => c.role === 'user');
 
+  const contentRef = useRef('');
+  const reasoningRef = useRef('');
+  const flushRef = useRef<NodeJS.Timeout | null>(null);
+
+  const flush = () => {
+    setStreamingContent(contentRef.current);
+    setStreamingReasoning(reasoningRef.current);
+  };
+
+  const scheduleFlush = () => {
+    if (flushRef.current) return;
+    flushRef.current = setTimeout(() => {
+      flushRef.current = null;
+      flush();
+    }, 120);
+  };
+
   const sendMessage = async () => {
     if (!prompt.trim() || !activeChat) return;
     const msg = prompt;
@@ -39,6 +56,8 @@ export default function ChatPage() {
     setIsStreaming(true);
     setStreamingContent('');
     setStreamingReasoning('');
+    contentRef.current = '';
+    reasoningRef.current = '';
 
     const abortController = new AbortController();
     streamAbortRef.current = abortController;
@@ -73,8 +92,9 @@ export default function ChatPage() {
           try {
             const data = JSON.parse(line.slice(6));
             if (data.type === 'delta') {
-              if (data.text) setStreamingContent((prev) => prev + data.text);
-              if (data.reasoning) setStreamingReasoning((prev) => prev + data.reasoning);
+              if (data.text) contentRef.current += data.text;
+              if (data.reasoning) reasoningRef.current += data.reasoning;
+              scheduleFlush();
             } else if (data.type === 'error') {
               alert(data.message);
             }
@@ -84,6 +104,11 @@ export default function ChatPage() {
     } catch (err: any) {
       if (err.name !== 'AbortError') alert(err.message);
     } finally {
+      if (flushRef.current) {
+        clearTimeout(flushRef.current);
+        flushRef.current = null;
+      }
+      flush();
       setIsStreaming(false);
       streamAbortRef.current = null;
       refetchChats();
