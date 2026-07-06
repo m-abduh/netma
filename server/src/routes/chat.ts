@@ -108,13 +108,22 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
       const newReasoning = reasoning.slice(lastReasoning.length);
 
       if (newReasoning) {
-        res.write(`data: ${JSON.stringify({ type: 'delta', text: '', reasoning: newReasoning })}\n\n`);
+        const words = newReasoning.split(/(\s+)/).filter(Boolean);
+        for (const w of words) {
+          res.write(`data: ${JSON.stringify({ type: 'delta', text: '', reasoning: w })}\n\n`);
+          await new Promise((r) => setTimeout(r, 10));
+        }
         lastReasoning = reasoning;
       }
 
       if (isComplete) {
         lastText = text;
-        res.write(`data: ${JSON.stringify({ type: 'delta', text, reasoning: '' })}\n\n`);
+        const words = text.split(/(\s+)/).filter(Boolean);
+        const delay = words.length > 50 ? 15 : 30;
+        for (const w of words) {
+          res.write(`data: ${JSON.stringify({ type: 'delta', text: w, reasoning: '' })}\n\n`);
+          await new Promise((r) => setTimeout(r, delay));
+        }
         break;
       }
       await new Promise((r) => setTimeout(r, 500));
