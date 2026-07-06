@@ -107,26 +107,14 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
       const { text, reasoning, isComplete } = await pollMessageParts(employee.port, sessionId);
       const newReasoning = reasoning.slice(lastReasoning.length);
 
-      // Reasoning di-stream per kata biar kelihatan progresif
       if (newReasoning) {
-        const chunks = newReasoning.split(/(\s+)/).filter(Boolean);
-        for (const chunk of chunks) {
-          res.write(`data: ${JSON.stringify({ type: 'delta', text: '', reasoning: chunk })}\n\n`);
-          await new Promise((r) => setTimeout(r, 10));
-        }
+        res.write(`data: ${JSON.stringify({ type: 'delta', text: '', reasoning: newReasoning })}\n\n`);
         lastReasoning = reasoning;
       }
 
-      // Text baru tersedia saat isComplete true — streaming word-by-word
       if (isComplete) {
         lastText = text;
-        // Stream text per kata
-        const delay = text.length > 200 ? 8 : 15;
-        const chunks = text.split(/(\s+)/).filter(Boolean);
-        for (const chunk of chunks) {
-          res.write(`data: ${JSON.stringify({ type: 'delta', text: chunk, reasoning: '' })}\n\n`);
-          await new Promise((r) => setTimeout(r, delay));
-        }
+        res.write(`data: ${JSON.stringify({ type: 'delta', text, reasoning: '' })}\n\n`);
         break;
       }
       await new Promise((r) => setTimeout(r, 500));

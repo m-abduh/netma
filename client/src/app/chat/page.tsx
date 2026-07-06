@@ -32,23 +32,6 @@ export default function ChatPage() {
   const firstAssistantMsg = chats?.find((c: any) => c.role === 'assistant');
   const lastUserMsg = chats?.find((c: any) => c.role === 'user');
 
-  const contentRef = useRef('');
-  const reasoningRef = useRef('');
-  const flushRef = useRef<NodeJS.Timeout | null>(null);
-
-  const flush = () => {
-    setStreamingContent(contentRef.current);
-    setStreamingReasoning(reasoningRef.current);
-  };
-
-  const scheduleFlush = () => {
-    if (flushRef.current) return;
-    flushRef.current = setTimeout(() => {
-      flushRef.current = null;
-      flush();
-    }, 120);
-  };
-
   const sendMessage = async () => {
     if (!prompt.trim() || !activeChat) return;
     const msg = prompt;
@@ -56,8 +39,6 @@ export default function ChatPage() {
     setIsStreaming(true);
     setStreamingContent('');
     setStreamingReasoning('');
-    contentRef.current = '';
-    reasoningRef.current = '';
 
     const abortController = new AbortController();
     streamAbortRef.current = abortController;
@@ -92,9 +73,8 @@ export default function ChatPage() {
           try {
             const data = JSON.parse(line.slice(6));
             if (data.type === 'delta') {
-              if (data.text) contentRef.current += data.text;
-              if (data.reasoning) reasoningRef.current += data.reasoning;
-              scheduleFlush();
+              if (data.text) setStreamingContent((prev) => prev + data.text);
+              if (data.reasoning) setStreamingReasoning((prev) => prev + data.reasoning);
             } else if (data.type === 'error') {
               alert(data.message);
             }
@@ -104,11 +84,6 @@ export default function ChatPage() {
     } catch (err: any) {
       if (err.name !== 'AbortError') alert(err.message);
     } finally {
-      if (flushRef.current) {
-        clearTimeout(flushRef.current);
-        flushRef.current = null;
-      }
-      flush();
       setIsStreaming(false);
       streamAbortRef.current = null;
       refetchChats();
@@ -187,27 +162,27 @@ export default function ChatPage() {
             </div>
             <div className="flex-1 overflow-auto p-4 space-y-4">
               {isStreaming && (
-                  <div className="flex flex-col items-start">
-                    <div className="max-w-[80%] p-3 rounded-xl text-sm bg-slate-700 text-slate-200">
-                      {streamingContent ? (
-                        <div className="markdown-content">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {streamingContent}
-                          </ReactMarkdown>
-                          <span className="inline-block w-2 h-4 bg-slate-400 animate-pulse ml-0.5 rounded-sm" />
-                        </div>
-                      ) : (
-                        <p className="text-slate-400 italic">Mengetik...</p>
-                      )}
-                      {streamingReasoning && (
-                        <div className="mt-2 text-xs text-slate-400 border-t border-slate-600 pt-2">
-                          <div className="font-semibold mb-1">Reasoning</div>
-                          <pre className="whitespace-pre-wrap font-mono text-xs">{streamingReasoning}</pre>
-                        </div>
-                      )}
-                    </div>
+                <div className="flex flex-col items-start">
+                  <div className="max-w-[80%] p-3 rounded-xl text-sm bg-slate-700 text-slate-200">
+                    {streamingContent ? (
+                      <div className="markdown-content">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {streamingContent}
+                        </ReactMarkdown>
+                        <span className="inline-block w-2 h-4 bg-slate-400 animate-pulse ml-0.5 rounded-sm" />
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 italic">Mengetik...</p>
+                    )}
+                    {streamingReasoning && (
+                      <div className="mt-2 text-xs text-slate-400 border-t border-slate-600 pt-2">
+                        <div className="font-semibold mb-1">Reasoning</div>
+                        <pre className="whitespace-pre-wrap font-mono text-xs">{streamingReasoning}</pre>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+              )}
               {chats?.map((chat: any, idx: number) => (
                 <div
                   key={chat.id}
