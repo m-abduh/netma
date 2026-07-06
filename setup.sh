@@ -57,13 +57,13 @@ echo ""
 echo "[4/6] Installing dependencies..."
 echo "  Server..."
 cd "$APP_DIR/server"
-npm install --omit=dev 2>&1 | sed 's/^/    /'
+npm install 2>&1 | sed 's/^/    /'
 npx prisma generate 2>&1 | sed 's/^/    /'
 npx prisma db push --accept-data-loss 2>&1 | sed 's/^/    /'
 
 echo "  Client..."
 cd "$APP_DIR/client"
-npm install --omit=dev 2>&1 | sed 's/^/    /'
+npm install 2>&1 | sed 's/^/    /'
 
 # --- Build ---
 echo ""
