@@ -35,7 +35,7 @@ router.post('/:id', async (req: Request, res: Response) => {
     return res.status(500).json({ error: `Failed to turn on: ${err.message}` });
   }
 
-  const { prompt } = req.body;
+  const { prompt, mode } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
   await prisma.chat.create({
@@ -48,7 +48,7 @@ router.post('/:id', async (req: Request, res: Response) => {
     const empWithHierarchy = await enrichEmployee(prisma, employee);
 
     req.setTimeout(180000);
-    const reply = await chatWithEmployee(empWithHierarchy, prompt);
+    const reply = await chatWithEmployee(empWithHierarchy, prompt, mode || 'plan');
 
     await prisma.chat.create({
       data: { employeeId: employee.id, role: 'assistant', content: reply },
@@ -69,7 +69,7 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
     return;
   }
 
-  const { prompt } = req.body;
+  const { prompt, mode } = req.body;
   if (!prompt) {
     res.writeHead(400, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Prompt is required' }));
@@ -99,7 +99,7 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
   try {
     if (!employee.port) throw new Error('Employee has no port assigned');
     const empWithHierarchy = await enrichEmployee(prisma, employee);
-    sessionId = await createSessionAsync(empWithHierarchy, prompt);
+    sessionId = await createSessionAsync(empWithHierarchy, prompt, mode || 'plan');
 
     let fullText = '';
     let fullReasoning = '';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, memo } from 'react';
+import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -9,9 +9,9 @@ import { useStore } from '@/store';
 import type { Employee } from '@/lib/types';
 
 const ChatHeader = memo(function ChatHeader({
-  name, rank, subordinates, hasChats, onClear,
+  name, rank, subordinates, hasChats, mode, onModeChange, onClear,
 }: {
-  name: string; rank: string; subordinates: number; hasChats: boolean; onClear: () => void;
+  name: string; rank: string; subordinates: number; hasChats: boolean; mode: 'plan' | 'build'; onModeChange: (m: 'plan' | 'build') => void; onClear: () => void;
 }) {
   return (
     <div className="p-4 border-b border-slate-700 flex items-center justify-between">
@@ -20,9 +20,25 @@ const ChatHeader = memo(function ChatHeader({
         <p className="text-sm text-slate-400">{rank}</p>
         {subordinates > 0 && <p className="text-xs text-slate-500 mt-1">{subordinates} bawahan</p>}
       </div>
-      {hasChats && (
-        <button onClick={onClear} className="text-xs text-red-400 hover:text-red-300">Hapus</button>
-      )}
+      <div className="flex items-center gap-3">
+        <div className="flex bg-slate-800 rounded-lg p-0.5 text-xs">
+          <button
+            onClick={() => onModeChange('plan')}
+            className={`px-3 py-1.5 rounded-md transition-colors ${mode === 'plan' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            Plan
+          </button>
+          <button
+            onClick={() => onModeChange('build')}
+            className={`px-3 py-1.5 rounded-md transition-colors ${mode === 'build' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            Build
+          </button>
+        </div>
+        {hasChats && (
+          <button onClick={onClear} className="text-xs text-red-400 hover:text-red-300">Hapus</button>
+        )}
+      </div>
     </div>
   );
 });
@@ -154,9 +170,12 @@ const EmployeeList = memo(function EmployeeList({
 
 export default function ChatPage() {
   const { activeChat, setActiveChat } = useStore();
+  const [mode, setMode] = useState<'plan' | 'build'>('plan');
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [optimisticMsgs, setOptimisticMsgs] = useState<any[]>([]);
+  const streamAccumRef = useRef({ text: '', reasoning: '' });
   const streamAbortRef = useRef<AbortController | null>(null);
   const queryClient = useQueryClient();
 
@@ -172,12 +191,30 @@ export default function ChatPage() {
   const subordinates = employees?.filter((e: Employee) => e.supervisorId === activeChat) || [];
   const employeeList = employees?.filter((e: Employee) => e.name !== 'Bos') || [];
 
+  useEffect(() => {
+    setOptimisticMsgs([]);
+  }, [activeChat]);
+
+  const displayChats = optimisticMsgs.length > 0
+    ? [...optimisticMsgs, ...(chats?.filter((c: any) => !optimisticMsgs.some((o) => o.content === c.content && o.role === c.role)) || [])]
+    : (chats || []);
+
   const sendMessage = useCallback(async (msg: string) => {
     if (!msg.trim() || !activeChat) return;
     setIsStreaming(true);
     setStreamingContent('');
     setStreamingReasoning('');
+    streamAccumRef.current = { text: '', reasoning: '' };
     streamAbortRef.current = new AbortController();
+
+    const optimisticUser = {
+      id: `opt-user-${Date.now()}`,
+      employeeId: activeChat,
+      role: 'user',
+      content: msg,
+      createdAt: new Date().toISOString(),
+    };
+    setOptimisticMsgs((prev) => [optimisticUser, ...prev]);
 
     try {
       const response = await fetch(
@@ -185,7 +222,7 @@ export default function ChatPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: msg }),
+          body: JSON.stringify({ prompt: msg, mode }),
           signal: streamAbortRef.current.signal,
         }
       );
@@ -209,8 +246,14 @@ export default function ChatPage() {
           try {
             const data = JSON.parse(line.slice(6));
             if (data.type === 'delta') {
-              if (data.text) setStreamingContent((prev) => prev + data.text);
-              if (data.reasoning) setStreamingReasoning((prev) => prev + data.reasoning);
+              if (data.text) {
+                streamAccumRef.current.text += data.text;
+                setStreamingContent(streamAccumRef.current.text);
+              }
+              if (data.reasoning) {
+                streamAccumRef.current.reasoning += data.reasoning;
+                setStreamingReasoning(streamAccumRef.current.reasoning);
+              }
             } else if (data.type === 'error') {
               alert(data.message);
             }
@@ -221,10 +264,27 @@ export default function ChatPage() {
       if (err.name !== 'AbortError') alert(err.message);
     } finally {
       setIsStreaming(false);
+      const { text } = streamAccumRef.current;
+      if (text) {
+        setOptimisticMsgs((prev) => [
+          {
+            id: `opt-assistant-${Date.now()}`,
+            employeeId: activeChat,
+            role: 'assistant',
+            content: text,
+            createdAt: new Date().toISOString(),
+          },
+          ...prev.filter((m) => m.id !== optimisticUser.id),
+        ]);
+      }
       streamAbortRef.current = null;
-      refetchChats();
+      refetchChats().then((data) => {
+        if (data?.data && data.data.length > 0) {
+          setOptimisticMsgs([]);
+        }
+      }).catch(() => {});
     }
-  }, [activeChat]);
+  }, [activeChat, mode]);
 
   const handleStop = useCallback(() => {
     streamAbortRef.current?.abort();
@@ -234,6 +294,7 @@ export default function ChatPage() {
   const handleClear = useCallback(async () => {
     if (!activeEmployee || !confirm('Hapus semua chat dengan ' + activeEmployee.name + '?')) return;
     await api.chat.clearHistory(activeEmployee.id);
+    setOptimisticMsgs([]);
     refetchChats();
   }, [activeEmployee]);
 
@@ -269,14 +330,16 @@ export default function ChatPage() {
               name={activeEmployee.name}
               rank={activeEmployee.rank}
               subordinates={subordinates.length}
-              hasChats={!!(chats && chats.length > 0)}
+              hasChats={!!(displayChats && displayChats.length > 0)}
+              mode={mode}
+              onModeChange={setMode}
               onClear={handleClear}
             />
             <div className="flex-1 overflow-auto p-4 space-y-4">
               {isStreaming && <StreamBubble content={streamingContent} reasoning={streamingReasoning} />}
-              {chats && (
+              {displayChats && displayChats.length > 0 && (
                 <ChatMessages
-                  chats={chats}
+                  chats={displayChats}
                   subordinates={subordinates}
                   onBroadcast={handleBroadcast}
                   onAddKanban={handleAddKanban}

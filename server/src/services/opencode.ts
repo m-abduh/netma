@@ -41,10 +41,16 @@ function buildSystemPrompt(employee: {
   supervisorName?: string;
   supervisorRank?: string;
   subordinates?: { name: string; rank: string }[];
-}): string {
+}, mode: 'plan' | 'build' = 'plan'): string {
   let prompt = `Kamu adalah ${employee.name}, seorang ${employee.rank}.
 Deskripsi pekerjaan: ${employee.jobDesc}
 Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
+
+  if (mode === 'plan') {
+    prompt += `\nKamu sedang dalam mode PLAN. Kamu HANYA boleh melakukan analisis, riset, perencanaan, dan memberikan penjelasan. DILARANG KERAS menulis kode, membuat file, atau mengeksekusi perintah apapun. Output kamu hanya boleh berupa teks analisis dan rencana, TIDAK BOLEH mengandung kode atau perintah eksekusi.`;
+  } else {
+    prompt += `\nKamu sedang dalam mode BUILD. Fokus pada eksekusi dan implementasi. Tulis kode, buat perubahan konkret, dan deliver hasil. Jangan terlalu lama menganalisis — langsung action. Utamakan output berupa kode, perintah, dan implementasi.`;
+  }
 
   if (employee.supervisorName) {
     prompt += `\nAtasanmu: ${employee.supervisorName} (${employee.supervisorRank}). Jika Bos memberi tugas melalui atasanmu, koordinasikan dengan atasanmu.`;
@@ -68,8 +74,8 @@ export async function chatWithEmployee(employee: {
   supervisorName?: string;
   supervisorRank?: string;
   subordinates?: { name: string; rank: string }[];
-}, prompt: string): Promise<string> {
-  const systemPrompt = buildSystemPrompt(employee);
+}, prompt: string, mode: 'plan' | 'build' = 'plan'): Promise<string> {
+  const systemPrompt = buildSystemPrompt(employee, mode);
 
   const sessionRes: any = await opencodeFetch(employee.port, '/session', {
     method: 'POST',
@@ -82,6 +88,7 @@ export async function chatWithEmployee(employee: {
     const msgRes: any = await opencodeFetch(employee.port, `/session/${sessionId}/message`, {
       method: 'POST',
       body: JSON.stringify({
+        agent: mode,
         system: systemPrompt,
         parts: [{ type: 'text', text: prompt }],
       }),
@@ -110,8 +117,8 @@ export async function createSessionAsync(employee: {
   supervisorName?: string;
   supervisorRank?: string;
   subordinates?: { name: string; rank: string }[];
-}, prompt: string): Promise<string> {
-  const systemPrompt = buildSystemPrompt(employee);
+}, prompt: string, mode: 'plan' | 'build' = 'plan'): Promise<string> {
+  const systemPrompt = buildSystemPrompt(employee, mode);
 
   const sessionRes: any = await opencodeFetch(employee.port, '/session', {
     method: 'POST',
@@ -123,6 +130,7 @@ export async function createSessionAsync(employee: {
   await opencodeFetchNoJson(employee.port, `/session/${sessionId}/prompt_async`, {
     method: 'POST',
     body: JSON.stringify({
+      agent: mode,
       system: systemPrompt,
       parts: [{ type: 'text', text: prompt }],
     }),
