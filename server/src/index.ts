@@ -120,10 +120,8 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.use(express.static('../client/out'));
-
 app.get('*', (_req, res) => {
-  res.sendFile('index.html', { root: '../client/out' });
+  res.status(404).json({ error: 'API route not found' });
 });
 
 async function start() {
