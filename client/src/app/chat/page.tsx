@@ -104,15 +104,6 @@ const ChatInput = memo(function ChatInput({
   return (
     <div className="p-4 border-t border-slate-700">
       <div className="flex gap-2 items-center">
-        <input
-          ref={inputRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          placeholder="Ketik prompt..."
-          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
-          disabled={isStreaming}
-        />
         <button
           onClick={() => onModeChange(mode === 'plan' ? 'build' : 'plan')}
           className={`relative w-14 h-7 rounded-full transition-colors shrink-0 ${
@@ -130,6 +121,15 @@ const ChatInput = memo(function ChatInput({
             <span className={mode === 'build' ? 'opacity-100' : 'opacity-0'}>B</span>
           </span>
         </button>
+        <input
+          ref={inputRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          placeholder="Ketik prompt..."
+          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+          disabled={isStreaming}
+        />
         {isStreaming ? (
           <button onClick={onStop} className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm shrink-0">Stop</button>
         ) : (
