@@ -44,7 +44,7 @@ if [ ! -f .env ]; then
 PORT=3001
 NODE_ENV=production
 OPENCODE_SERVER_PASSWORD=$local_pass
-AUTH_USERNAME=admin
+AUTH_USERNAME=mabduh
 AUTH_PASSWORD=netma123
 EOF
     echo "  Created default .env with random password"
