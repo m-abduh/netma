@@ -84,8 +84,8 @@ mkdir -p "$APP_DIR/logs"
 echo ""
 echo "[6/6] Starting with PM2..."
 cd "$APP_DIR"
-pm2 delete netma-server 2>/dev/null || true
-pm2 start ecosystem.config.js --env production
+pm2 delete netma-server netma-client 2>/dev/null || true
+pm2 start ecosystem.config.js
 
 # Save PM2 process list for auto-restart on reboot
 pm2 save
