@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'netma_auth';
 
 export interface AuthState {
-  email: string;
+  username: string;
   loggedIn: boolean;
 }
 
@@ -16,8 +16,8 @@ export function getAuth(): AuthState | null {
   }
 }
 
-export function setAuth(email: string): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ email, loggedIn: true }));
+export function setAuth(username: string): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ username, loggedIn: true }));
 }
 
 export function clearAuth(): void {
