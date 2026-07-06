@@ -82,7 +82,7 @@ npx prisma db push --accept-data-loss 2>&1 | sed 's/^/    /'
 
 echo "  Client..."
 cd "$APP_DIR/client"
-npm install 2>&1 | sed 's/^/    /'
+npm install --include=dev 2>&1 | sed 's/^/    /'
 
 # --- Build ---
 echo ""
