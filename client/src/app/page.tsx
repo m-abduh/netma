@@ -10,9 +10,11 @@ import {
   Position,
   MarkerType,
   applyNodeChanges,
+  applyEdgeChanges,
   type Node,
   type Edge,
   type OnNodesChange,
+  type OnEdgesChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import ReactMarkdown from 'react-markdown';
@@ -417,8 +419,8 @@ function getRankColor(rank: string) {
 function EmployeeNode({ data }: { data: any }) {
   return (
     <div
-      className="px-4 py-3 rounded-xl border-2 text-center shadow-lg cursor-pointer hover:brightness-110 transition-all"
-      style={{ borderColor: data.color, backgroundColor: '#1e293b', minWidth: 150 }}
+      className="px-4 py-3 rounded-xl border-2 text-center shadow-lg"
+      style={{ borderColor: data.color, backgroundColor: '#1e293b', minWidth: 150, position: 'relative' }}
     >
       <Handle type="target" position={Position.Top} isConnectable={false} className="!border-slate-600" />
       <div className="text-lg font-bold">{data.label}</div>
@@ -442,6 +444,10 @@ function OrganogramPage({ onChat }: { onChat: (id: string) => void }) {
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => setRfNodes((prev) => applyNodeChanges(changes, prev)),
+    [],
+  );
+  const onEdgesChange: OnEdgesChange = useCallback(
+    (changes) => setRfEdges((prev) => applyEdgeChanges(changes, prev)),
     [],
   );
 
@@ -496,16 +502,15 @@ function OrganogramPage({ onChat }: { onChat: (id: string) => void }) {
           nodes={rfNodes}
           edges={rfEdges}
           onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           fitView
           minZoom={0.3}
           maxZoom={2}
-          nodesConnectable={false}
-          edgesFocusable={false}
-          nodesDraggable={true}
-          defaultEdgeOptions={{ type: 'default', style: { stroke: '#475569', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' } }}
+          onlyRenderVisibleElements={false}
+          defaultEdgeOptions={{ type: 'smoothstep', animated: true, style: { stroke: '#475569', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' } }}
           deleteKeyCode={null}
           className="bg-slate-900/50 rounded-xl border border-slate-700"
         >
