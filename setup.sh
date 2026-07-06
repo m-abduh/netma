@@ -76,7 +76,7 @@ echo ""
 echo "[4/6] Installing dependencies..."
 echo "  Server..."
 cd "$APP_DIR/server"
-npm install 2>&1 | sed 's/^/    /'
+npm install --include=dev 2>&1 | sed 's/^/    /'
 npx prisma generate 2>&1 | sed 's/^/    /'
 npx prisma db push --accept-data-loss 2>&1 | sed 's/^/    /'
 
@@ -93,7 +93,7 @@ echo "    Compiling..."
 TSC_BIN="$APP_DIR/server/node_modules/.bin/tsc"
 if [ ! -f "$TSC_BIN" ]; then
   echo "    ✗ TypeScript not found, installing..."
-  npm install 2>&1 | sed 's/^/    /'
+  npm install --include=dev 2>&1 | sed 's/^/    /'
 fi
 if "$TSC_BIN" 2>&1; then
   echo "    ✓ TypeScript compiled successfully"
