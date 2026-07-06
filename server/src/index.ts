@@ -13,6 +13,7 @@ import { broadcastRouter } from './routes/broadcast';
 import { logsRouter } from './routes/logs';
 import { filesRouter } from './routes/files';
 import { kanbanRouter } from './routes/kanban';
+import { authRouter } from './routes/auth';
 import { initScheduler } from './services/scheduler';
 import { getProjectDir } from './config';
 import { getProcessManager } from './services/processManager';
@@ -29,6 +30,7 @@ app.use((req, _res, next) => {
   next();
 });
 
+app.use('/api/auth', authRouter);
 app.use('/api/employees', employeesRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/jobs', jobsRouter);

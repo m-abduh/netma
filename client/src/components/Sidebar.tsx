@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { clearAuth } from '@/lib/auth';
 import type { Employee } from '@/lib/types';
 
 const menuItems: { path: string; label: string; icon: string }[] = [
@@ -47,6 +48,15 @@ export default function Sidebar() {
           </button>
         ))}
       </nav>
+      <div className="p-2 border-t border-slate-700">
+        <button
+          onClick={() => { clearAuth(); router.push('/'); }}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-700 hover:text-red-400 transition-colors"
+        >
+          <span>🚪</span>
+          Keluar
+        </button>
+      </div>
     </aside>
   );
 }
