@@ -90,7 +90,12 @@ echo "[5/6] Building..."
 echo "  Server (TypeScript)..."
 cd "$APP_DIR/server"
 echo "    Compiling..."
-if ./node_modules/.bin/tsc 2>&1; then
+TSC_BIN="$APP_DIR/server/node_modules/.bin/tsc"
+if [ ! -f "$TSC_BIN" ]; then
+  echo "    ✗ TypeScript not found, installing..."
+  npm install 2>&1 | sed 's/^/    /'
+fi
+if "$TSC_BIN" 2>&1; then
   echo "    ✓ TypeScript compiled successfully"
 else
   echo "    ✗ TypeScript compilation failed"
