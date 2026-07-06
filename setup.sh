@@ -89,7 +89,13 @@ echo ""
 echo "[5/6] Building..."
 echo "  Server (TypeScript)..."
 cd "$APP_DIR/server"
-npx tsc 2>&1 | sed 's/^/    /'
+echo "    Compiling..."
+if npx tsc 2>&1; then
+  echo "    ✓ TypeScript compiled successfully"
+else
+  echo "    ✗ TypeScript compilation failed"
+  exit 1
+fi
 
 echo "  Client (Next.js production build)..."
 cd "$APP_DIR/client"
