@@ -75,7 +75,7 @@ echo "  Server (TypeScript)..."
 cd "$APP_DIR/server"
 npx tsc 2>&1 | sed 's/^/    /'
 
-echo "  Client (Next.js static export)..."
+echo "  Client (Next.js production build)..."
 cd "$APP_DIR/client"
 npx next build 2>&1 | sed 's/^/    /'
 
