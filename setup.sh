@@ -34,37 +34,42 @@ fi
 # --- Environment ---
 echo ""
 echo "[3/6] Setting up environment..."
-if [ ! -f .env ]; then
-  if [ -f .env.example ]; then
-    cp .env.example .env
-    echo "  Created .env from .env.example"
+ENV_FILE="$APP_DIR/server/.env"
+ENV_EXAMPLE="$APP_DIR/server/.env.example"
+
+if [ ! -f "$ENV_FILE" ]; then
+  if [ -f "$ENV_EXAMPLE" ]; then
+    cp "$ENV_EXAMPLE" "$ENV_FILE"
+    echo "  Created server/.env from server/.env.example"
   else
     local_pass=$(openssl rand -base64 24 2>/dev/null || echo "CHANGE_ME")
-    cat > .env <<-EOF
+    cat > "$ENV_FILE" <<-EOF
 PORT=3001
 NODE_ENV=production
 OPENCODE_SERVER_PASSWORD=$local_pass
 AUTH_USERNAME=change-me
 AUTH_PASSWORD=change-me
 EOF
-    echo "  Created default .env with random password"
+    echo "  Created default server/.env with random password"
   fi
 else
-  echo "  .env already exists, checking for missing vars..."
-  while IFS='=' read -r key rest; do
-    case "$key" in
-      ''|'#'*) continue ;;
-      *)
-        if ! grep -q "^${key}=" .env 2>/dev/null; then
-          echo "  Adding missing $key"
-          printf '%s=%s\n' "$key" "$rest" >> .env
-        fi
-        ;;
-    esac
-  done < .env.example
+  echo "  server/.env exists, checking for missing vars..."
+  if [ -f "$ENV_EXAMPLE" ]; then
+    while IFS='=' read -r key rest; do
+      case "$key" in
+        ''|'#'*) continue ;;
+        *)
+          if ! grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
+            echo "  Adding missing $key"
+            printf '%s=%s\n' "$key" "$rest" >> "$ENV_FILE"
+          fi
+          ;;
+      esac
+    done < "$ENV_EXAMPLE"
+  fi
 fi
 
-source .env
+set -a; source "$ENV_FILE"; set +a
 
 # --- Install dependencies ---
 echo ""

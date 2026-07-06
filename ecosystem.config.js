@@ -7,7 +7,7 @@ module.exports = {
       args: 'dist/index.js',
       instances: 1,
       exec_mode: 'fork',
-      env_file: '../.env',
+      env_file: '.env',
       error_file: '../logs/netma-error.log',
       out_file: '../logs/netma-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
