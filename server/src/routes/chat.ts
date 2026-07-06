@@ -1,8 +1,18 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { chatWithEmployee } from '../services/opencode';
+import { getProcessManager } from '../services/processManager';
 
 const router = Router();
+
+async function ensureOnline(prisma: PrismaClient, employee: { id: string; port: number; status: string }) {
+  if (employee.status === 'online') return;
+  const pm = getProcessManager();
+  if (!pm.isRunning(employee.port)) {
+    await pm.start(employee as any);
+  }
+  await prisma.employee.update({ where: { id: employee.id }, data: { status: 'online' } });
+}
 
 async function enrichEmployee(prisma: PrismaClient, emp: any) {
   const supervisor = emp.supervisorId ? await prisma.employee.findUnique({ where: { id: emp.supervisorId } }) : null;
@@ -19,7 +29,11 @@ router.post('/:id', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
   const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
   if (!employee) return res.status(404).json({ error: 'Employee not found' });
-  if (employee.status !== 'online') return res.status(400).json({ error: 'Employee is offline' });
+  try {
+    await ensureOnline(prisma, employee);
+  } catch (err: any) {
+    return res.status(500).json({ error: `Failed to turn on: ${err.message}` });
+  }
 
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
@@ -54,37 +68,34 @@ router.post('/:id/broadcast-to-subordinates', async (req: Request, res: Response
   const { prompt, response } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
-  const subordinates = await prisma.employee.findMany({ where: { supervisorId: employee.id, status: 'online' } });
+  const subordinates = await prisma.employee.findMany({ where: { supervisorId: employee.id } });
   if (subordinates.length === 0) return res.json({ results: [] });
 
-  const enriched = await enrichEmployee(prisma, employee);
-  const contextPrompt = `[Pesan dari atasanmu ${employee.name}]\n\nInstruksi Bos: ${prompt}\n\nRencana ${employee.name}: ${response}\n\nTugasmu: buatlah rencana detail untuk bagianmu.`;
+  const msg = `📢 **Broadcast dari ${employee.name}**\n\n**Instruksi Bos:** ${prompt}\n\n**Rencana ${employee.name}:**${response ? '\n' + response : ''}\n\n*Tugasmu: buatlah rencana detail untuk bagianmu.*`;
 
-  const results: { id: string; name: string; success: boolean; output?: string; error?: string }[] = [];
+  await Promise.all(subordinates.map((sub) => ensureOnline(prisma, sub).catch(() => {})));
 
-  for (const sub of subordinates) {
-    try {
-      const empWithHierarchy = await enrichEmployee(prisma, sub);
-      const output = await chatWithEmployee(empWithHierarchy, contextPrompt);
-
-      await prisma.chat.create({
-        data: { employeeId: sub.id, role: 'user', content: contextPrompt },
-      });
-      await prisma.chat.create({
-        data: { employeeId: sub.id, role: 'assistant', content: output },
-      });
-
-      results.push({ id: sub.id, name: sub.name, success: true, output });
-    } catch (err: any) {
-      results.push({ id: sub.id, name: sub.name, success: false, error: err.message });
-    }
-  }
+  await Promise.all(subordinates.map((sub) =>
+    prisma.chat.create({ data: { employeeId: sub.id, role: 'user', content: msg } })
+  ));
 
   await prisma.auditLog.create({
     data: { actor: 'Bos', action: 'Broadcast', target: employee.id, detail: `Broadcast ke ${subordinates.length} bawahan` },
   });
 
-  res.json({ results });
+  res.json({ success: true, count: subordinates.length, names: subordinates.map((s: any) => s.name) });
+
+  subordinates.forEach((sub) => {
+    (async () => {
+      try {
+        const enrichedSub = await enrichEmployee(prisma, sub);
+        const reply = await chatWithEmployee(enrichedSub, msg);
+        await prisma.chat.create({ data: { employeeId: sub.id, role: 'assistant', content: reply } });
+      } catch (err: any) {
+        console.error(`Broadcast reply failed for ${sub.name}: ${err.message}`);
+      }
+    })();
+  });
 });
 
 router.get('/:id/event', (req: Request, res: Response) => {

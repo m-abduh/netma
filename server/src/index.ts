@@ -15,6 +15,7 @@ import { filesRouter } from './routes/files';
 import { kanbanRouter } from './routes/kanban';
 import { initScheduler } from './services/scheduler';
 import { getProjectDir } from './config';
+import { getProcessManager } from './services/processManager';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -133,8 +134,22 @@ async function start() {
   } catch {}
 
   initScheduler(prisma);
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Netma server running on http://localhost:${PORT}`);
+
+    const employees = await prisma.employee.findMany();
+    const pm = getProcessManager();
+    const results = await Promise.allSettled(
+      employees.filter(e => e.port).map(async (emp) => {
+        await pm.start(emp as any);
+        await prisma.employee.update({ where: { id: emp.id }, data: { status: 'online' } });
+      })
+    );
+    const started = results.filter(r => r.status === 'fulfilled').length;
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') console.error(`  ${employees[i].name}: ${r.reason.message}`);
+    });
+    console.log(`Auto-started ${started}/${employees.length} karyawan`);
   });
 }
 

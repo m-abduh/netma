@@ -23,32 +23,33 @@ router.post('/', async (req: Request, res: Response) => {
   const employees = await prisma.employee.findMany({ where: { status: 'online' } });
   if (employees.length === 0) return res.json({ results: [] });
 
-  const results: { id: string; name: string; success: boolean; output?: string; error?: string }[] = [];
+  req.setTimeout(300000);
 
-  for (const emp of employees) {
-    try {
+  const enriched = await Promise.all(employees.map((emp) => enrichEmployee(prisma, emp)));
+
+  await Promise.all(employees.map((emp) =>
+    prisma.chat.create({ data: { employeeId: emp.id, role: 'user', content: prompt } })
+  ));
+
+  const results = await Promise.allSettled(
+    enriched.map(async (emp) => {
       if (!emp.port) throw new Error('Employee has no port assigned');
-      const empWithHierarchy = await enrichEmployee(prisma, emp);
-      const output = await chatWithEmployee(empWithHierarchy, prompt);
+      const output = await chatWithEmployee(emp, prompt);
+      await prisma.chat.create({ data: { employeeId: emp.id, role: 'assistant', content: output } });
+      return { id: emp.id, name: emp.name, success: true as const, output };
+    })
+  );
 
-      await prisma.chat.create({
-        data: { employeeId: emp.id, role: 'user', content: prompt },
-      });
-      await prisma.chat.create({
-        data: { employeeId: emp.id, role: 'assistant', content: output },
-      });
-
-      results.push({ id: emp.id, name: emp.name, success: true, output });
-    } catch (err: any) {
-      results.push({ id: emp.id, name: emp.name, success: false, error: err.message });
-    }
-  }
+  const resultList = results.map((r, i) => {
+    if (r.status === 'fulfilled') return r.value;
+    return { id: employees[i].id, name: employees[i].name, success: false as const, error: r.reason.message };
+  });
 
   await prisma.auditLog.create({
     data: { actor: 'Bos', action: 'Chat', target: 'broadcast', detail: `Broadcast ke ${employees.length} karyawan` },
   });
 
-  res.json({ results });
+  res.json({ results: resultList });
 });
 
 export { router as broadcastRouter };
