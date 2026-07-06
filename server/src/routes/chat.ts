@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { chatWithEmployee } from '../services/opencode';
+import { chatWithEmployee, createSessionAsync, pollMessageParts, deleteSession } from '../services/opencode';
 import { getProcessManager } from '../services/processManager';
 
 const router = Router();
@@ -57,6 +57,94 @@ router.post('/:id', async (req: Request, res: Response) => {
     res.json({ role: 'assistant', content: reply });
   } catch (err: any) {
     res.status(502).json({ error: `Failed to reach opencode: ${err.message}` });
+  }
+});
+
+router.post('/:id/stream', async (req: Request, res: Response) => {
+  const prisma: PrismaClient = (req as any).prisma;
+  const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
+  if (!employee) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Employee not found' }));
+    return;
+  }
+
+  const { prompt } = req.body;
+  if (!prompt) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Prompt is required' }));
+    return;
+  }
+
+  try {
+    await ensureOnline(prisma, employee);
+  } catch (err: any) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: `Failed to turn on: ${err.message}` }));
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  });
+
+  await prisma.chat.create({
+    data: { employeeId: employee.id, role: 'user', content: prompt },
+  });
+
+  let lastText = '';
+  let lastReasoning = '';
+  let sessionId: string | null = null;
+
+  try {
+    if (!employee.port) throw new Error('Employee has no port assigned');
+    const empWithHierarchy = await enrichEmployee(prisma, employee);
+    sessionId = await createSessionAsync(empWithHierarchy, prompt);
+
+    for (let i = 0; i < 360; i++) {
+      const { text, reasoning, isComplete } = await pollMessageParts(employee.port, sessionId);
+      const newReasoning = reasoning.slice(lastReasoning.length);
+
+      // Reasoning dikirim progresif pas polling
+      if (newReasoning) {
+        res.write(`data: ${JSON.stringify({ type: 'delta', text: '', reasoning: newReasoning })}\n\n`);
+        lastReasoning = reasoning;
+      }
+
+      // Text baru tersedia saat isComplete true — streaming word-by-word
+      if (isComplete) {
+        lastText = text;
+        // Stream text per kata
+        const delay = text.length > 200 ? 8 : 15;
+        const chunks = text.split(/(\s+)/).filter(Boolean);
+        for (const chunk of chunks) {
+          res.write(`data: ${JSON.stringify({ type: 'delta', text: chunk, reasoning: '' })}\n\n`);
+          await new Promise((r) => setTimeout(r, delay));
+        }
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
+    if (lastText) {
+      await prisma.chat.create({
+        data: { employeeId: employee.id, role: 'assistant', content: lastText },
+      });
+    }
+
+    res.write(`data: ${JSON.stringify({ type: 'done', text: lastText, reasoning: lastReasoning })}\n\n`);
+    res.end();
+  } catch (err: any) {
+    try {
+      res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`);
+    } catch {}
+    try { res.end(); } catch {}
+  } finally {
+    if (sessionId && employee.port) {
+      deleteSession(employee.port, sessionId);
+    }
   }
 });
 

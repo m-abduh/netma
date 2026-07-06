@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,8 +11,11 @@ import type { Employee } from '@/lib/types';
 export default function ChatPage() {
   const { activeChat, setActiveChat } = useStore();
   const [prompt, setPrompt] = useState('');
-  const [sending, setSending] = useState(false);
   const [broadcasting, setBroadcasting] = useState(false);
+  const [streamingContent, setStreamingContent] = useState('');
+  const [streamingReasoning, setStreamingReasoning] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const streamAbortRef = useRef<AbortController | null>(null);
   const queryClient = useQueryClient();
 
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
@@ -20,7 +23,7 @@ export default function ChatPage() {
     queryKey: ['chats', activeChat],
     queryFn: () => api.chat.history(activeChat!),
     enabled: !!activeChat,
-    refetchInterval: 3000,
+    refetchInterval: isStreaming ? false : 3000,
   });
   const { data: columns } = useQuery({ queryKey: ['kanban-columns'], queryFn: api.kanban.columns.list });
 
@@ -31,15 +34,59 @@ export default function ChatPage() {
 
   const sendMessage = async () => {
     if (!prompt.trim() || !activeChat) return;
-    setSending(true);
+    const msg = prompt;
+    setPrompt('');
+    setIsStreaming(true);
+    setStreamingContent('');
+    setStreamingReasoning('');
+
+    const abortController = new AbortController();
+    streamAbortRef.current = abortController;
+
     try {
-      await api.chat.send(activeChat, prompt);
-      setPrompt('');
-      refetchChats();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/chat/${activeChat}/stream`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: msg }),
+          signal: abortController.signal,
+        }
+      );
+      if (!response.ok) {
+        const err = await response.text().catch(() => '');
+        throw new Error(err || 'Stream request failed');
+      }
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'delta') {
+              if (data.text) setStreamingContent((prev) => prev + data.text);
+              if (data.reasoning) setStreamingReasoning((prev) => prev + data.reasoning);
+            } else if (data.type === 'error') {
+              alert(data.message);
+            }
+          } catch {}
+        }
+      }
     } catch (err: any) {
-      alert(err.message);
+      if (err.name !== 'AbortError') alert(err.message);
     } finally {
-      setSending(false);
+      setIsStreaming(false);
+      streamAbortRef.current = null;
+      refetchChats();
     }
   };
 
@@ -114,13 +161,28 @@ export default function ChatPage() {
               )}
             </div>
             <div className="flex-1 overflow-auto p-4 space-y-4">
-              {sending && (
-                <div className="flex justify-start">
-                  <div className="bg-slate-700 p-3 rounded-xl text-sm text-slate-400 italic">
-                    Mengetik...
+              {isStreaming && (
+                  <div className="flex flex-col items-start">
+                    <div className="max-w-[80%] p-3 rounded-xl text-sm bg-slate-700 text-slate-200">
+                      {streamingContent ? (
+                        <div className="markdown-content">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {streamingContent}
+                          </ReactMarkdown>
+                          <span className="inline-block w-2 h-4 bg-slate-400 animate-pulse ml-0.5 rounded-sm" />
+                        </div>
+                      ) : (
+                        <p className="text-slate-400 italic">Mengetik...</p>
+                      )}
+                      {streamingReasoning && (
+                        <div className="mt-2 text-xs text-slate-400 border-t border-slate-600 pt-2">
+                          <div className="font-semibold mb-1">Reasoning</div>
+                          <pre className="whitespace-pre-wrap font-mono text-xs">{streamingReasoning}</pre>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               {chats?.map((chat: any, idx: number) => (
                 <div
                   key={chat.id}
@@ -169,15 +231,24 @@ export default function ChatPage() {
                   onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                   placeholder="Ketik prompt..."
                   className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
-                  disabled={sending}
+                  disabled={isStreaming}
                 />
-                <button
-                  onClick={sendMessage}
-                  disabled={sending || !prompt.trim()}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm disabled:opacity-50"
-                >
-                  {sending ? '...' : 'Kirim'}
-                </button>
+                {isStreaming ? (
+                  <button
+                    onClick={() => { streamAbortRef.current?.abort(); setIsStreaming(false); }}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm"
+                  >
+                    Stop
+                  </button>
+                ) : (
+                  <button
+                    onClick={sendMessage}
+                    disabled={!prompt.trim()}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm disabled:opacity-50"
+                  >
+                    Kirim
+                  </button>
+                )}
               </div>
             </div>
           </>
