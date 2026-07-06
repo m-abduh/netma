@@ -90,7 +90,7 @@ echo "[5/6] Building..."
 echo "  Server (TypeScript)..."
 cd "$APP_DIR/server"
 echo "    Compiling..."
-if npx tsc 2>&1; then
+if ./node_modules/.bin/tsc 2>&1; then
   echo "    ✓ TypeScript compiled successfully"
 else
   echo "    ✗ TypeScript compilation failed"
