@@ -15,26 +15,32 @@ const ChatHeader = memo(function ChatHeader({
 }) {
   return (
     <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-      <div>
-        <h3 className="font-bold">{name}</h3>
-        <p className="text-sm text-slate-400">{rank}</p>
-        {subordinates > 0 && <p className="text-xs text-slate-500 mt-1">{subordinates} bawahan</p>}
+      <div className="flex items-center gap-3">
+        <div>
+          <h3 className="font-bold">{name}</h3>
+          <p className="text-sm text-slate-400">{rank}</p>
+          {subordinates > 0 && <p className="text-xs text-slate-500 mt-1">{subordinates} bawahan</p>}
+        </div>
+        <button
+          onClick={() => onModeChange(mode === 'plan' ? 'build' : 'plan')}
+          className={`relative w-14 h-7 rounded-full transition-colors ${
+            mode === 'build' ? 'bg-emerald-600' : 'bg-slate-600'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+              mode === 'build' ? 'translate-x-7' : 'translate-x-0.5'
+            }`}
+          />
+          <span className={`absolute inset-0 flex items-center justify-between px-1.5 text-[10px] font-semibold ${
+            mode === 'plan' ? 'text-blue-200' : 'text-emerald-200'
+          }`}>
+            <span className={mode === 'plan' ? 'opacity-100' : 'opacity-0'}>P</span>
+            <span className={mode === 'build' ? 'opacity-100' : 'opacity-0'}>B</span>
+          </span>
+        </button>
       </div>
       <div className="flex items-center gap-3">
-        <div className="flex bg-slate-800 rounded-lg p-0.5 text-xs">
-          <button
-            onClick={() => onModeChange('plan')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${mode === 'plan' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
-          >
-            Plan
-          </button>
-          <button
-            onClick={() => onModeChange('build')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${mode === 'build' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
-          >
-            Build
-          </button>
-        </div>
         {hasChats && (
           <button onClick={onClear} className="text-xs text-red-400 hover:text-red-300">Hapus</button>
         )}
