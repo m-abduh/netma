@@ -107,9 +107,13 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
       const { text, reasoning, isComplete } = await pollMessageParts(employee.port, sessionId);
       const newReasoning = reasoning.slice(lastReasoning.length);
 
-      // Reasoning dikirim progresif pas polling
+      // Reasoning di-stream per kata biar kelihatan progresif
       if (newReasoning) {
-        res.write(`data: ${JSON.stringify({ type: 'delta', text: '', reasoning: newReasoning })}\n\n`);
+        const chunks = newReasoning.split(/(\s+)/).filter(Boolean);
+        for (const chunk of chunks) {
+          res.write(`data: ${JSON.stringify({ type: 'delta', text: '', reasoning: chunk })}\n\n`);
+          await new Promise((r) => setTimeout(r, 10));
+        }
         lastReasoning = reasoning;
       }
 
