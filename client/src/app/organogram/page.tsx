@@ -59,9 +59,11 @@ export default function OrganogramPage() {
   const [rfNodes, setRfNodes] = useState<Node[]>([]);
   const [rfEdges, setRfEdges] = useState<Edge[]>([]);
   const queryClient = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const [selectedNode, setSelectedNode] = useState<Employee | null>(null);
   const initialized = useRef(false);
+  const savedPositions = useRef<Record<string, { x: number; y: number }>>({});
+  const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => setRfNodes((prev) => applyNodeChanges(changes, prev)),
@@ -76,20 +78,20 @@ export default function OrganogramPage() {
     if (!employees || initialized.current) return;
     initialized.current = true;
 
-    setRfNodes(
-      employees.map((emp) => ({
-        id: emp.id,
-        type: 'employee',
-        position: { x: emp.positionX || 0, y: emp.positionY || 0 },
-        data: {
-          label: emp.name,
-          rank: emp.rank,
-          color: getRankColor(emp.rank),
-          online: emp.status === 'online',
-          employeeId: emp.id,
-        },
-      }))
-    );
+    const nodes = employees.map((emp) => ({
+      id: emp.id,
+      type: 'employee',
+      position: { x: emp.positionX || 0, y: emp.positionY || 0 },
+      data: {
+        label: emp.name,
+        rank: emp.rank,
+        color: getRankColor(emp.rank),
+        online: emp.status === 'online',
+        employeeId: emp.id,
+      },
+    }));
+    nodes.forEach((n) => { savedPositions.current[n.id] = { ...n.position }; });
+    setRfNodes(nodes);
 
     setRfEdges(
       employees
@@ -107,30 +109,69 @@ export default function OrganogramPage() {
     if (emp) setSelectedNode(emp);
   }, [employees]);
 
-  const onNodeDragStop = useCallback((_event: any, node: any) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      api.employees.update(node.id, { positionX: Math.round(node.position.x), positionY: Math.round(node.position.y) });
-    }, 500);
-  }, []);
-
   const handleChat = (id: string) => {
     setActiveChat(id);
     router.push('/chat');
   };
 
+  const savePositions = async () => {
+    setSaving(true);
+    try {
+      await Promise.all(rfNodes.map((n) =>
+        api.employees.update(n.id, { positionX: Math.round(n.position.x), positionY: Math.round(n.position.y) })
+      ));
+      rfNodes.forEach((n) => { savedPositions.current[n.id] = { ...n.position }; });
+      setHasChanges(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancelChanges = () => {
+    setRfNodes((prev) => prev.map((n) => {
+      const saved = savedPositions.current[n.id];
+      return saved ? { ...n, position: { ...saved } } : n;
+    }));
+    setHasChanges(false);
+  };
+
+  const handleNodeDragStop = useCallback((_event: any, node: any) => {
+    setHasChanges(true);
+  }, []);
+
   return (
     <div className="p-6 h-full flex gap-6">
       <div className="flex-1" style={{ height: '80vh' }}>
-        <h2 className="text-2xl font-bold mb-4">Struktur Organisasi</h2>
-        <p className="text-sm text-slate-400 mb-4">Drag node untuk reposition. Klik node untuk detail & chat.</p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-bold">Struktur Organisasi</h2>
+            <p className="text-sm text-slate-400">Drag node untuk reposition. Klik node untuk detail & chat.</p>
+          </div>
+          {hasChanges && (
+            <div className="flex gap-2">
+              <button
+                onClick={cancelChanges}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm"
+              >
+                Batal
+              </button>
+              <button
+                onClick={savePositions}
+                disabled={saving}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm disabled:opacity-50"
+              >
+                {saving ? 'Menyimpan...' : 'Simpan Posisi'}
+              </button>
+            </div>
+          )}
+        </div>
         <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
-          onNodeDragStop={onNodeDragStop}
+          onNodeDragStop={handleNodeDragStop}
           nodeTypes={nodeTypes}
           fitView
           minZoom={0.3}
