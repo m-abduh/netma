@@ -216,7 +216,7 @@ export default function ChatPage() {
 
     try {
       const response = await fetch(
-        `/api/chat/${activeChat}/stream`,
+        `${process.env.NEXT_PUBLIC_API_URL || ''}/api/chat/${activeChat}/stream`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
