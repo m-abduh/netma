@@ -50,7 +50,18 @@ EOF
     echo "  Created default .env with random password"
   fi
 else
-  echo "  .env already exists, skipping"
+  echo "  .env already exists, checking for missing vars..."
+  while IFS='=' read -r key rest; do
+    case "$key" in
+      ''|'#'*) continue ;;
+      *)
+        if ! grep -q "^${key}=" .env 2>/dev/null; then
+          echo "  Adding missing $key"
+          printf '%s=%s\n' "$key" "$rest" >> .env
+        fi
+        ;;
+    esac
+  done < .env.example
 fi
 
 source .env
