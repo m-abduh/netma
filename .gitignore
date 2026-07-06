@@ -10,8 +10,8 @@ server/dist/
 build/
 
 # Environment
-.env
-.env.local
+.env*
+**/.env*
 .env.development.local
 .env.test.local
 .env.production.local
