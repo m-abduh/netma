@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { chatWithEmployee, createSessionAsync, pollMessageParts, deleteSession } from '../services/opencode';
+import { chatWithEmployee, createSessionAsync, pollMessageParts, streamMessageParts, deleteSession } from '../services/opencode';
 import { getProcessManager } from '../services/processManager';
 
 const router = Router();
@@ -94,8 +94,6 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
     data: { employeeId: employee.id, role: 'user', content: prompt },
   });
 
-  let lastText = '';
-  let lastReasoning = '';
   let sessionId: string | null = null;
 
   try {
@@ -103,39 +101,30 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
     const empWithHierarchy = await enrichEmployee(prisma, employee);
     sessionId = await createSessionAsync(empWithHierarchy, prompt);
 
-    for (let i = 0; i < 360; i++) {
-      const { text, reasoning, isComplete } = await pollMessageParts(employee.port, sessionId);
-      const newReasoning = reasoning.slice(lastReasoning.length);
+    let fullText = '';
+    let fullReasoning = '';
 
-      if (newReasoning) {
-        const words = newReasoning.split(/(\s+)/).filter(Boolean);
-        for (const w of words) {
-          res.write(`data: ${JSON.stringify({ type: 'delta', text: '', reasoning: w })}\n\n`);
-          await new Promise((r) => setTimeout(r, 10));
-        }
-        lastReasoning = reasoning;
+    for await (const delta of streamMessageParts(employee.port, sessionId)) {
+      if (delta.text) {
+        fullText += delta.text;
+        res.write(`data: ${JSON.stringify({ type: 'delta', text: delta.text, reasoning: '' })}\n\n`);
       }
-
-      if (isComplete) {
-        lastText = text;
-        const words = text.split(/(\s+)/).filter(Boolean);
-        const delay = words.length > 50 ? 15 : 30;
-        for (const w of words) {
-          res.write(`data: ${JSON.stringify({ type: 'delta', text: w, reasoning: '' })}\n\n`);
-          await new Promise((r) => setTimeout(r, delay));
-        }
+      if (delta.reasoning) {
+        fullReasoning += delta.reasoning;
+        res.write(`data: ${JSON.stringify({ type: 'delta', text: '', reasoning: delta.reasoning })}\n\n`);
+      }
+      if (delta.isComplete) {
         break;
       }
-      await new Promise((r) => setTimeout(r, 500));
     }
 
-    if (lastText) {
+    if (fullText) {
       await prisma.chat.create({
-        data: { employeeId: employee.id, role: 'assistant', content: lastText },
+        data: { employeeId: employee.id, role: 'assistant', content: fullText },
       });
     }
 
-    res.write(`data: ${JSON.stringify({ type: 'done', text: lastText, reasoning: lastReasoning })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done', text: fullText, reasoning: fullReasoning })}\n\n`);
     res.end();
   } catch (err: any) {
     try {

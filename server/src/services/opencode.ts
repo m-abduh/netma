@@ -153,6 +153,76 @@ export async function pollMessageParts(port: number, sessionId: string): Promise
   return { text, reasoning, isComplete };
 }
 
+export async function* streamMessageParts(
+  port: number,
+  sessionId: string,
+  signal?: AbortSignal
+): AsyncGenerator<{ text: string; reasoning: string; isComplete: boolean }> {
+  const url = `http://127.0.0.1:${port}/event`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`opencode:${OPENCODE_PASSWORD}`).toString('base64')}`,
+    },
+    signal,
+  });
+  if (!res.ok) throw new Error(`SSE connection failed (${res.status})`);
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const partTypes = new Map<string, 'text' | 'reasoning'>();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+
+        try {
+          const event = JSON.parse(trimmed.slice(6));
+          const { type, properties } = event;
+          if (properties?.sessionID !== sessionId) continue;
+
+          if (type === 'message.part.updated') {
+            const part = properties.part;
+            if (part?.type === 'reasoning' || part?.type === 'text') {
+              partTypes.set(part.id, part.type);
+            }
+          } else if (type === 'message.part.delta') {
+            const { partID, delta } = properties;
+            if (!delta) continue;
+            const partType = partTypes.get(partID) || 'text';
+            if (partType === 'reasoning') {
+              yield { text: '', reasoning: delta, isComplete: false };
+            } else {
+              yield { text: delta, reasoning: '', isComplete: false };
+            }
+          } else if (type === 'message.updated') {
+            if (properties.info?.finish === 'stop') {
+              yield { text: '', reasoning: '', isComplete: true };
+              return;
+            }
+          } else if (type === 'session.status') {
+            if (properties.status?.type === 'idle') {
+              yield { text: '', reasoning: '', isComplete: true };
+              return;
+            }
+          }
+        } catch {}
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export async function deleteSession(port: number, sessionId: string): Promise<void> {
   await opencodeFetchNoJson(port, `/session/${sessionId}`, { method: 'DELETE' }).catch(() => {});
 }
