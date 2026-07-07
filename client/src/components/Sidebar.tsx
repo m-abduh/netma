@@ -9,7 +9,6 @@ import type { Employee } from '@/lib/types';
 const menuItems: { path: string; label: string; icon: string }[] = [
   { path: '/dashboard', label: 'Dashboard', icon: '📊' },
   { path: '/chat', label: 'Chat', icon: '💬' },
-  { path: '/organogram', label: 'Organisasi', icon: '🌳' },
   { path: '/kanban', label: 'Kanban', icon: '📋' },
   { path: '/jobs', label: 'Jobs', icon: '⏰' },
   { path: '/broadcast', label: 'Broadcast', icon: '📢' },

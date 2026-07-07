@@ -1,6 +1,5 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Employee } from '@/lib/types';
 
@@ -21,17 +20,6 @@ export default function EmployeeCard({
   onChat: (id: string) => void;
   lastChat?: any;
 }) {
-  const queryClient = useQueryClient();
-  const toggleMutation = useMutation({
-    mutationFn: () =>
-      employee.status === 'online'
-        ? api.employees.turnOff(employee.id)
-        : api.employees.turnOn(employee.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-    },
-  });
-
   const rankColor = rankColors[employee.rank.split(' ')[0]] || 'bg-slate-600';
 
   return (
@@ -55,25 +43,12 @@ export default function EmployeeCard({
         </p>
       )}
       <div className="flex items-center justify-end mt-4">
-        <div className="flex gap-2">
-          <button
-            onClick={() => onChat(employee.id)}
-            className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-          >
-            Chat
-          </button>
-          <button
-            onClick={() => toggleMutation.mutate()}
-            disabled={toggleMutation.isPending}
-            className={`px-3 py-1 text-xs rounded-lg transition-colors disabled:opacity-50 ${
-              employee.status === 'online'
-                ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-green-600 hover:bg-green-700'
-            }`}
-          >
-            {employee.status === 'online' ? 'OFF' : 'ON'}
-          </button>
-        </div>
+        <button
+          onClick={() => onChat(employee.id)}
+          className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+        >
+          Chat
+        </button>
       </div>
     </div>
   );

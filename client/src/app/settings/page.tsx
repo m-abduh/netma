@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import DirBrowser from '@/components/DirBrowser';
 import type { Employee } from '@/lib/types';
@@ -55,6 +55,14 @@ export default function SettingsPage() {
     await api.employees.delete(id);
     queryClient.invalidateQueries({ queryKey: ['employees'] });
   };
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      status === 'online' ? api.employees.turnOff(id) : api.employees.turnOn(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+    },
+  });
 
   const startEdit = (emp: Employee) => {
     setForm({ name: emp.name, rank: emp.rank, jobDesc: emp.jobDesc, model: emp.model, supervisorId: emp.supervisorId || '' });
@@ -167,6 +175,17 @@ export default function SettingsPage() {
                 <td className="p-3">
                   <div className="flex gap-2">
                     <button onClick={() => startEdit(emp)} className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded">Edit</button>
+                    <button
+                      onClick={() => toggleMutation.mutate({ id: emp.id, status: emp.status })}
+                      disabled={toggleMutation.isPending}
+                      className={`px-2 py-1 text-xs rounded disabled:opacity-50 ${
+                        emp.status === 'online'
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : 'bg-green-600 hover:bg-green-700'
+                      }`}
+                    >
+                      {emp.status === 'online' ? 'OFF' : 'ON'}
+                    </button>
                     <button onClick={() => deleteEmployee(emp.id)} className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 rounded">Hapus</button>
                   </div>
                 </td>
