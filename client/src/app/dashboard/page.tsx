@@ -35,6 +35,23 @@ function getRankColor(rank: string) {
   return rankColors[key] || '#64748b';
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*\*(.*?)\*\*\*/g, '$1')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/~~(.*?)~~/g, '$1')
+    .replace(/`{1,3}(.*?)`{1,3}/g, '$1')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/> /g, '')
+    .replace(/^#+\s/gm, '')
+    .replace(/^\s*[-*+]\s/gm, '')
+    .replace(/^\s*\d+\.\s/gm, '')
+    .trim();
+}
+
 function EmployeeNode({ data }: { data: any }) {
   return (
     <div
@@ -93,7 +110,7 @@ export default function DashboardPage() {
         color: getRankColor(emp.rank),
         online: emp.status === 'online',
         employeeId: emp.id,
-        lastChat: recentChats?.[emp.id]?.content || null,
+        lastChat: recentChats?.[emp.id]?.content ? stripMarkdown(recentChats[emp.id].content) : null,
       },
     }));
     nodes.forEach((n) => { savedPositions.current[n.id] = { ...n.position }; });
