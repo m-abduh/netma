@@ -147,8 +147,8 @@ export default function DashboardPage() {
   const online = employees?.filter((e: Employee) => e.status === 'online').length || 0;
 
   return (
-    <div className="p-6 h-full">
-      <div className="flex items-center justify-between mb-4">
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between p-4 bg-slate-800/50 border-b border-slate-700 flex-shrink-0">
         <div className="flex items-center gap-4">
           <h2 className="text-2xl font-bold">Dashboard</h2>
           <div className="flex gap-2 text-xs">
@@ -166,7 +166,7 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
-      <div style={{ height: '80vh' }}>
+      <div className="flex-1 min-h-0">
         <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
@@ -181,7 +181,7 @@ export default function DashboardPage() {
           onlyRenderVisibleElements={false}
           defaultEdgeOptions={{ type: 'smoothstep', animated: true, style: { stroke: '#475569', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' } }}
           deleteKeyCode={null}
-          className="bg-slate-900/50 rounded-xl border border-slate-700"
+          className="bg-slate-900"
         >
           <Background color="#334155" gap={20} />
           <Controls className="!bg-slate-800 !border-slate-700 !text-slate-300" />
