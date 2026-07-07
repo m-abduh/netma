@@ -57,9 +57,11 @@ const StreamBubble = memo(function StreamBubble({
 const ChatMessages = memo(function ChatMessages({
   chats, subordinates, onBroadcast, onAddKanban,
 }: {
-  chats: any[]; subordinates: Employee[]; onBroadcast: () => void; onAddKanban: (c: string) => void;
+  chats: any[]; subordinates: Employee[]; onBroadcast: (prompt: string, response: string) => void; onAddKanban: (c: string) => void;
 }) {
   const firstAssistantIdx = chats.findIndex((c: any) => c.role === 'assistant');
+  const response = firstAssistantIdx >= 0 ? chats[firstAssistantIdx].content : '';
+  const prompt = firstAssistantIdx >= 0 && firstAssistantIdx + 1 < chats.length ? chats[firstAssistantIdx + 1].content : '';
   return (
     <>
       {chats.map((chat: any, idx: number) => (
@@ -72,7 +74,7 @@ const ChatMessages = memo(function ChatMessages({
           {chat.role === 'assistant' && idx === firstAssistantIdx && (
             <div className="flex gap-2 mt-2">
               {subordinates.length > 0 && (
-                <button onClick={onBroadcast} className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded-lg">
+                <button onClick={() => onBroadcast(prompt, response)} className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded-lg">
                   Sebarkan ke {subordinates.length} Bawahan
                 </button>
               )}
@@ -296,9 +298,12 @@ export default function ChatPage() {
     refetchChats();
   }, [activeEmployee]);
 
-  const handleBroadcast = useCallback(() => {
+  const handleBroadcast = useCallback((prompt: string, response: string) => {
     if (!activeChat) return;
-    api.chat.broadcastToSubordinates(activeChat, '', '').catch(() => {});
+    if (!prompt) { alert('Tidak ada prompt untuk disebarkan'); return; }
+    api.chat.broadcastToSubordinates(activeChat, prompt, response).then((res: any) => {
+      alert(`Broadcast terkirim ke ${res.count} bawahan: ${res.names.join(', ')}`);
+    }).catch((err) => alert('Gagal broadcast: ' + err.message));
   }, [activeChat]);
 
   const handleAddKanban = useCallback((chatContent: string) => {
