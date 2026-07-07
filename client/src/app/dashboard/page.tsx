@@ -21,8 +21,6 @@ import '@xyflow/react/dist/style.css';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import type { Employee } from '@/lib/types';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 const rankColors: Record<string, string> = {
   Boss: '#9333ea',
@@ -48,10 +46,8 @@ function EmployeeNode({ data }: { data: any }) {
       <div className="text-xs text-slate-400">{data.rank}</div>
       <div className={`mt-2 mx-auto w-2.5 h-2.5 rounded-full ${data.online ? 'bg-green-400' : 'bg-red-400'}`} />
       {data.lastChat && (
-        <div className="mt-2 text-[10px] text-slate-500 leading-tight line-clamp-3 max-w-[160px] mx-auto">
-          <div className="markdown-content">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.lastChat}</ReactMarkdown>
-          </div>
+        <div className="mt-2 text-[10px] text-slate-500 leading-tight line-clamp-3 max-w-[160px] mx-auto truncate">
+          {data.lastChat}
         </div>
       )}
       <Handle type="source" position={Position.Bottom} isConnectable={false} className="!border-slate-600" />
