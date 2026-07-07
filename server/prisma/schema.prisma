@@ -26,7 +26,7 @@ model Employee {
   chats       Chat[]
   jobs        Job[]
   files       File[]
-  kanbanTasks KanbanTask[]
+  notes       Note[]
 }
 
 model Chat {
@@ -76,28 +76,13 @@ model AuditLog {
   createdAt DateTime @default(now())
 }
 
-model KanbanColumn {
-  id        String       @id @default(uuid())
-  title     String
-  order     Int
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  tasks     KanbanTask[]
-}
-
-model KanbanTask {
-  id          String    @id @default(uuid())
-  columnId    String
+model Note {
+  id         String   @id @default(uuid())
+  title      String
+  content    String
   employeeId String?
-  title       String
-  description String?
-  priority    String    @default("medium")
-  deadline    DateTime?
-  source      String    @default("manual")
-  order      Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  column   KanbanColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  employee Employee?    @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 }

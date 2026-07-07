@@ -55,9 +55,9 @@ const StreamBubble = memo(function StreamBubble({
 });
 
 const ChatMessages = memo(function ChatMessages({
-  chats, subordinates, onBroadcast, onAddKanban,
+  chats, subordinates, onBroadcast, onSaveNote,
 }: {
-  chats: any[]; subordinates: Employee[]; onBroadcast: (prompt: string, response: string) => void; onAddKanban: (c: string) => void;
+  chats: any[]; subordinates: Employee[]; onBroadcast: (prompt: string, response: string) => void; onSaveNote: (c: string) => void;
 }) {
   const firstAssistantIdx = chats.findIndex((c: any) => c.role === 'assistant');
   const response = firstAssistantIdx >= 0 ? chats[firstAssistantIdx].content : '';
@@ -78,8 +78,8 @@ const ChatMessages = memo(function ChatMessages({
                   Sebarkan ke {subordinates.length} Bawahan
                 </button>
               )}
-              <button onClick={() => onAddKanban(chat.content)} className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded-lg">
-                ➕ Kanban
+              <button onClick={() => onSaveNote(chat.content)} className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded-lg">
+                Simpan
               </button>
             </div>
           )}
@@ -185,8 +185,6 @@ export default function ChatPage() {
     queryFn: () => api.chat.history(activeChat!),
     enabled: !!activeChat,
   });
-  const { data: columns } = useQuery({ queryKey: ['kanban-columns'], queryFn: api.kanban.columns.list });
-
   const activeEmployee = employees?.find((e: Employee) => e.id === activeChat);
   const subordinates = employees?.filter((e: Employee) => e.supervisorId === activeChat) || [];
   const employeeList = employees?.filter((e: Employee) => e.name !== 'Bos') || [];
@@ -306,19 +304,12 @@ export default function ChatPage() {
     }).catch((err) => alert('Gagal broadcast: ' + err.message));
   }, [activeChat]);
 
-  const handleAddKanban = useCallback((chatContent: string) => {
-    const firstCol = columns?.[0];
-    if (!firstCol) { alert('Buat kolom Kanban dulu'); return; }
-    api.kanban.tasks.create({
-      columnId: firstCol.id,
-      title: chatContent.split('\n')[0].slice(0, 80) || 'Plan',
-      description: chatContent,
-      employeeId: activeChat,
-      source: 'chat',
-    }).then(() => {
-      queryClient.invalidateQueries({ queryKey: ['kanban-columns'] });
-    }).catch((err) => alert('Gagal: ' + err.message));
-  }, [columns, activeChat, queryClient]);
+  const handleSaveNote = useCallback((chatContent: string) => {
+    const title = chatContent.split('\n')[0].slice(0, 80) || 'Catatan';
+    api.notes.create({ title, content: chatContent, employeeId: activeChat })
+      .then(() => { alert('Catatan tersimpan'); })
+      .catch((err) => alert('Gagal simpan: ' + err.message));
+  }, [activeChat]);
 
   return (
     <div className="flex h-full">
@@ -343,7 +334,7 @@ export default function ChatPage() {
                   chats={displayChats}
                   subordinates={subordinates}
                   onBroadcast={handleBroadcast}
-                  onAddKanban={handleAddKanban}
+                  onSaveNote={handleSaveNote}
                 />
               )}
             </div>

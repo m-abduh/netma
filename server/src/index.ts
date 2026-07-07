@@ -12,7 +12,7 @@ import { jobsRouter } from './routes/jobs';
 import { broadcastRouter } from './routes/broadcast';
 import { logsRouter } from './routes/logs';
 import { filesRouter } from './routes/files';
-import { kanbanRouter } from './routes/kanban';
+import { notesRouter } from './routes/notes';
 import { authRouter } from './routes/auth';
 import { initScheduler } from './services/scheduler';
 import { getProjectDir } from './config';
@@ -37,7 +37,7 @@ app.use('/api/jobs', jobsRouter);
 app.use('/api/broadcast', broadcastRouter);
 app.use('/api/logs', logsRouter);
 app.use('/api/employees/:id/files', filesRouter);
-app.use('/api/kanban', kanbanRouter);
+app.use('/api/notes', notesRouter);
 
 app.get('/api/edges', async (_req, res) => {
   const employees = await prisma.employee.findMany({ where: { NOT: { supervisorId: null } } });

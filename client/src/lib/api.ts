@@ -58,18 +58,9 @@ export const api = {
   browse: {
     list: (dir?: string) => request<any>(`/api/browse/list${dir ? `?dir=${encodeURIComponent(dir)}` : ''}`),
   },
-  kanban: {
-    columns: {
-      list: () => request<any[]>('/api/kanban/columns'),
-      create: (title: string) => request<any>('/api/kanban/columns', { method: 'POST', body: JSON.stringify({ title }) }),
-      update: (id: string, data: any) => request<any>(`/api/kanban/columns/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) => request<any>(`/api/kanban/columns/${id}`, { method: 'DELETE' }),
-    },
-    tasks: {
-      list: () => request<any[]>('/api/kanban/tasks'),
-      create: (data: any) => request<any>('/api/kanban/tasks', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: any) => request<any>(`/api/kanban/tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) => request<any>(`/api/kanban/tasks/${id}`, { method: 'DELETE' }),
-    },
+  notes: {
+    list: () => request<any[]>('/api/notes'),
+    create: (data: any) => request<any>('/api/notes', { method: 'POST', body: JSON.stringify(data) }),
+    delete: (id: string) => request<any>(`/api/notes/${id}`, { method: 'DELETE' }),
   },
 };

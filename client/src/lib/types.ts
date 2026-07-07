@@ -53,24 +53,12 @@ export interface FileEntry {
   createdAt: string;
 }
 
-export interface KanbanColumn {
+export interface Note {
   id: string;
   title: string;
-  order: number;
-  tasks: KanbanTask[];
-}
-
-export interface KanbanTask {
-  id: string;
-  columnId: string;
+  content: string;
   employeeId: string | null;
-  title: string;
-  description: string | null;
-  priority: string;
-  deadline: string | null;
-  source: string;
-  order: number;
   createdAt: string;
+  updatedAt: string;
   employee?: Employee | null;
-  column?: KanbanColumn;
 }
