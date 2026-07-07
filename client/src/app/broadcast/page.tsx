@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Card } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 export default function BroadcastPage() {
   const [prompt, setPrompt] = useState('');
@@ -18,50 +22,49 @@ export default function BroadcastPage() {
       const res = await api.broadcast.send(prompt);
       setResults(res.results);
       queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('Broadcast terkirim');
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Broadcast</h2>
-      <p className="text-sm text-slate-400 mb-4">Kirim 1 prompt ke semua karyawan yang ON sekaligus</p>
+    <div className="p-6 max-w-3xl">
+      <h2 className="text-2xl font-bold mb-2">Broadcast</h2>
+      <p className="text-sm text-muted-foreground mb-6">Kirim 1 prompt ke semua karyawan yang ON sekaligus</p>
 
-      <div className="space-y-4">
-        <textarea
+      <Card className="p-4 space-y-4">
+        <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Tulis prompt untuk semua karyawan..."
           rows={4}
-          className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-sm focus:outline-none focus:border-blue-500 resize-none"
         />
-        <button
+        <Button
           onClick={send}
           disabled={sending || !prompt.trim()}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm disabled:opacity-50"
         >
           {sending ? 'Mengirim...' : 'Broadcast ke Semua'}
-        </button>
-      </div>
+        </Button>
+      </Card>
 
       {results && (
         <div className="mt-8 space-y-4">
           <h3 className="font-semibold">Hasil</h3>
           {results.map((r, i) => (
-            <div key={i} className={`rounded-xl p-4 ${r.success ? 'bg-slate-800' : 'bg-red-900/30'}`}>
+            <Card key={i} className={`p-4 ${!r.success ? 'border-destructive/50' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
                 <div className={`w-2 h-2 rounded-full ${r.success ? 'bg-green-400' : 'bg-red-400'}`} />
                 <span className="font-semibold">{r.name}</span>
               </div>
               {r.success ? (
-                <p className="text-sm text-slate-300">{r.output}</p>
+                <p className="text-sm text-foreground">{r.output}</p>
               ) : (
-                <p className="text-sm text-red-400">{r.error}</p>
+                <p className="text-sm text-destructive">{r.error}</p>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}

@@ -21,6 +21,9 @@ import '@xyflow/react/dist/style.css';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import type { Employee } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const rankColors: Record<string, string> = {
   Boss: '#9333ea',
@@ -60,18 +63,18 @@ function EmployeeNode({ data }: { data: any }) {
   return (
     <div
       className="px-4 py-3 rounded-xl border-2 text-center shadow-lg cursor-pointer"
-      style={{ borderColor: data.color, backgroundColor: '#1e293b', minWidth: 180, position: 'relative' }}
+      style={{ borderColor: data.color, backgroundColor: 'hsl(var(--card))', minWidth: 180, position: 'relative' }}
     >
-      <Handle type="target" position={Position.Top} isConnectable={false} className="!border-slate-600" />
+      <Handle type="target" position={Position.Top} isConnectable={true} className="!border-border !bg-background !w-3 !h-3" />
       <div className="text-lg font-bold">{data.label}</div>
-      <div className="text-xs text-slate-400">{data.rank}</div>
-      <div className={`mt-2 mx-auto w-2.5 h-2.5 rounded-full ${data.online ? 'bg-green-400' : 'bg-red-400'}`} />
+      <div className="text-xs text-muted-foreground">{data.rank}</div>
+      <div className={cn('mt-2 mx-auto w-2.5 h-2.5 rounded-full', data.online ? 'bg-green-400' : 'bg-red-400')} />
       {data.lastChat && (
-        <div className="mt-2 text-[10px] text-slate-500 leading-tight line-clamp-3 max-w-[160px] mx-auto">
+        <div className="mt-2 text-[10px] text-muted-foreground leading-tight line-clamp-3 max-w-[160px] mx-auto">
           {stripMarkdown(data.lastChat)}
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} isConnectable={false} className="!border-slate-600" />
+      <Handle type="source" position={Position.Bottom} isConnectable={true} className="!border-border !bg-background !w-3 !h-3" />
     </div>
   );
 }
@@ -127,6 +130,9 @@ export default function DashboardPage() {
           id: `${e.supervisorId}-${e.id}`,
           source: e.supervisorId!,
           target: e.id,
+          animated: true,
+          style: { stroke: '#888', strokeWidth: 2 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#888' },
         }))
     );
   }, [employees, recentChats]);
@@ -165,21 +171,21 @@ export default function DashboardPage() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between p-4 bg-slate-800/50 border-b border-slate-700 flex-shrink-0">
+      <div className="flex items-center justify-between p-4 bg-card/50 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-4">
           <h2 className="text-2xl font-bold">Dashboard</h2>
-          <div className="flex gap-2 text-xs">
-            <span className="bg-slate-800 px-3 py-1 rounded-lg">Total: {employees?.length || 0}</span>
-            <span className="bg-slate-800 px-3 py-1 rounded-lg text-green-400">Online: {online}</span>
-            <span className="bg-slate-800 px-3 py-1 rounded-lg text-red-400">Offline: {(employees?.length || 0) - online}</span>
+          <div className="flex gap-2">
+            <Badge variant="outline">Total: {employees?.length || 0}</Badge>
+            <Badge variant="outline" className="text-green-400 border-green-400/30">Online: {online}</Badge>
+            <Badge variant="outline" className="text-red-400 border-red-400/30">Offline: {(employees?.length || 0) - online}</Badge>
           </div>
         </div>
         {hasChanges && (
           <div className="flex gap-2">
-            <button onClick={cancelChanges} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm">Batal</button>
-            <button onClick={savePositions} disabled={saving} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm disabled:opacity-50">
+            <Button variant="secondary" size="sm" onClick={cancelChanges}>Batal</Button>
+            <Button variant="default" size="sm" onClick={savePositions} disabled={saving}>
               {saving ? 'Menyimpan...' : 'Simpan Posisi'}
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -196,25 +202,13 @@ export default function DashboardPage() {
           minZoom={0.3}
           maxZoom={2}
           onlyRenderVisibleElements={false}
-          defaultEdgeOptions={{ type: 'smoothstep', animated: true, style: { stroke: '#475569', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' } }}
+          defaultEdgeOptions={{ type: 'smoothstep', animated: true, style: { stroke: '#888', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#888' } }}
+          isValidConnection={() => true}
           deleteKeyCode={null}
-          className="bg-slate-900"
+          className="bg-background"
         >
-          <Background color="#334155" gap={20} bgColor="#0f172a" />
-          <Controls
-            className="!bg-black !border-0 !shadow-lg rounded-lg overflow-hidden"
-            style={{ backgroundColor: '#000', border: 'none' }}
-          >
-            <style jsx global>{`
-              .react-flow__attribution { display: none !important; }
-              .react-flow__controls { background: #000 !important; border: none !important; border-radius: 8px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important; }
-              .react-flow__controls button { color: #94a3b8 !important; background: transparent !important; }
-              .react-flow__controls button path { fill: #94a3b8 !important; stroke: #94a3b8 !important; }
-              .react-flow__controls button svg { color: #94a3b8 !important; fill: #94a3b8 !important; }
-              .react-flow__controls button:hover { background: #1e293b !important; }
-              .react-flow__controls button:focus { outline: none; box-shadow: none; }
-            `}</style>
-          </Controls>
+          <Background color="hsl(var(--muted))" gap={20} bgColor="hsl(var(--background))" />
+          <Controls />
         </ReactFlow>
       </div>
     </div>

@@ -7,6 +7,13 @@ import remarkGfm from 'remark-gfm';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import type { Employee } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 
 const ChatHeader = memo(function ChatHeader({
   name, rank, subordinates, hasChats, onClear,
@@ -14,14 +21,14 @@ const ChatHeader = memo(function ChatHeader({
   name: string; rank: string; subordinates: number; hasChats: boolean; onClear: () => void;
 }) {
   return (
-    <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+    <div className="p-4 border-b border-border flex items-center justify-between">
       <div>
         <h3 className="font-bold">{name}</h3>
-        <p className="text-sm text-slate-400">{rank}</p>
-        {subordinates > 0 && <p className="text-xs text-slate-500 mt-1">{subordinates} bawahan</p>}
+        <p className="text-sm text-muted-foreground">{rank}</p>
+        {subordinates > 0 && <p className="text-xs text-muted-foreground mt-1">{subordinates} bawahan</p>}
       </div>
       {hasChats && (
-        <button onClick={onClear} className="text-xs text-red-400 hover:text-red-300">Hapus</button>
+        <Button variant="ghost" size="sm" onClick={onClear} className="text-destructive hover:text-destructive">Hapus</Button>
       )}
     </div>
   );
@@ -34,22 +41,22 @@ const StreamBubble = memo(function StreamBubble({
 }) {
   return (
     <div className="flex flex-col items-start">
-      <div className="max-w-[80%] p-3 rounded-xl text-sm bg-slate-700 text-slate-200">
+      <Card className="max-w-[80%] p-3 text-sm">
         {content ? (
           <div className="markdown-content">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-            <span className="inline-block w-2 h-4 bg-slate-400 animate-pulse ml-0.5 rounded-sm" />
+            <span className="inline-block w-2 h-4 bg-muted-foreground animate-pulse ml-0.5 rounded-sm" />
           </div>
         ) : (
-          <p className="text-slate-400 italic">Mengetik...</p>
+          <p className="text-muted-foreground italic">Mengetik...</p>
         )}
         {reasoning && (
-          <div className="mt-2 text-xs text-slate-400 border-t border-slate-600 pt-2">
+          <div className="mt-2 text-xs text-muted-foreground border-t border-border pt-2">
             <div className="font-semibold mb-1">Reasoning</div>
             <pre className="whitespace-pre-wrap font-mono text-xs">{reasoning}</pre>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 });
@@ -65,22 +72,22 @@ const ChatMessages = memo(function ChatMessages({
   return (
     <>
       {chats.map((chat: any, idx: number) => (
-        <div key={chat.id} className={`flex flex-col ${chat.role === 'user' ? 'items-end' : 'items-start'}`}>
-          <div className={`max-w-[80%] p-3 rounded-xl text-sm ${chat.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-200'}`}>
+        <div key={chat.id} className={cn('flex flex-col', chat.role === 'user' ? 'items-end' : 'items-start')}>
+          <Card className={cn('max-w-[80%] p-3 text-sm', chat.role === 'user' ? 'bg-primary text-primary-foreground border-primary' : '')}>
             <div className="markdown-content">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{chat.content}</ReactMarkdown>
             </div>
-          </div>
+          </Card>
           {chat.role === 'assistant' && idx === firstAssistantIdx && (
             <div className="flex gap-2 mt-2">
               {subordinates.length > 0 && (
-                <button onClick={() => onBroadcast(prompt, response)} className="px-3 py-1 text-xs bg-teal-600 hover:bg-teal-700 rounded-lg">
+                <Button variant="default" size="sm" onClick={() => onBroadcast(prompt, response)} className="bg-teal-600 hover:bg-teal-700 text-white">
                   Sebarkan ke {subordinates.length} Bawahan
-                </button>
+                </Button>
               )}
-              <button onClick={() => onSaveNote(chat.content)} className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded-lg">
+              <Button variant="secondary" size="sm" onClick={() => onSaveNote(chat.content)}>
                 Simpan
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -104,35 +111,35 @@ const ChatInput = memo(function ChatInput({
   };
 
   return (
-    <div className="p-4 border-t border-slate-700">
+    <div className="p-4 border-t border-border">
       <div className="flex gap-2 items-center">
-        <div className="flex bg-slate-800 rounded-lg p-0.5 text-xs shrink-0">
+        <div className="flex bg-muted rounded-lg p-0.5 text-xs shrink-0">
           <button
             onClick={() => onModeChange('plan')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${mode === 'plan' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+            className={cn('px-3 py-1.5 rounded-md transition-colors', mode === 'plan' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
           >
             Plan
           </button>
           <button
             onClick={() => onModeChange('build')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${mode === 'build' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+            className={cn('px-3 py-1.5 rounded-md transition-colors', mode === 'build' ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:text-foreground')}
           >
             Build
           </button>
         </div>
-        <input
-          ref={inputRef}
+        <Input
+          ref={inputRef as any}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Ketik prompt..."
-          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
           disabled={isStreaming}
+          className="flex-1"
         />
         {isStreaming ? (
-          <button onClick={onStop} className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm shrink-0">Stop</button>
+          <Button variant="destructive" size="default" onClick={onStop} className="shrink-0">Stop</Button>
         ) : (
-          <button onClick={handleSend} disabled={!text.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm shrink-0 disabled:opacity-50">Kirim</button>
+          <Button variant="default" size="default" onClick={handleSend} disabled={!text.trim()} className="shrink-0">Kirim</Button>
         )}
       </div>
     </div>
@@ -145,25 +152,27 @@ const EmployeeList = memo(function EmployeeList({
   employees: Employee[]; activeChat: string | null; onSelect: (id: string) => void;
 }) {
   return (
-    <div className="w-56 border-l border-slate-700 flex flex-col overflow-auto shrink-0">
-      <div className="p-3 border-b border-slate-700">
-        <h3 className="text-sm font-semibold text-slate-400">Karyawan</h3>
+    <div className="hidden md:flex w-56 border-l border-border flex-col overflow-auto shrink-0">
+      <div className="p-3 border-b border-border">
+        <h3 className="text-sm font-semibold text-muted-foreground">Karyawan</h3>
       </div>
-      {employees.map((emp: Employee) => (
-        <button
-          key={emp.id}
-          onClick={() => onSelect(emp.id)}
-          className={`flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-700 transition-colors ${
-            activeChat === emp.id ? 'bg-slate-700' : ''
-          } ${emp.status === 'online' ? 'text-white' : 'text-slate-500'}`}
-        >
-          <span>{emp.status === 'online' ? '🟢' : '🔴'}</span>
-          <div className="flex-1 min-w-0">
-            <div className="truncate">{emp.name}</div>
-            <div className="text-xs truncate text-slate-500">{emp.rank}</div>
-          </div>
-        </button>
-      ))}
+      <ScrollArea className="flex-1">
+        {employees.map((emp: Employee) => (
+          <button
+            key={emp.id}
+            onClick={() => onSelect(emp.id)}
+            className={cn('flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-accent transition-colors',
+              activeChat === emp.id ? 'bg-accent' : '',
+              emp.status === 'online' ? '' : 'text-muted-foreground')}
+          >
+            <span>{emp.status === 'online' ? '🟢' : '🔴'}</span>
+            <div className="flex-1 min-w-0">
+              <div className="truncate">{emp.name}</div>
+              <div className="text-xs truncate text-muted-foreground">{emp.rank}</div>
+            </div>
+          </button>
+        ))}
+      </ScrollArea>
     </div>
   );
 });
@@ -313,9 +322,44 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full">
+      {/* Mobile employee list sheet */}
+      <div className="md:hidden absolute z-50 m-2">
+        <Sheet>
+          <SheetTrigger
+            render={
+              <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <span>👥</span>
+                Karyawan
+              </Button>
+            }
+          />
+          <SheetContent side="right" className="w-72">
+            <SheetHeader>
+              <SheetTitle>Karyawan</SheetTitle>
+            </SheetHeader>
+            <div className="flex flex-col gap-1 mt-4">
+              {employeeList.map((emp: Employee) => (
+                <button
+                  key={emp.id}
+                  onClick={() => { setActiveChat(emp.id); }}
+                  className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left hover:bg-accent transition-colors',
+                    activeChat === emp.id ? 'bg-accent' : '')}
+                >
+                  <span>{emp.status === 'online' ? '🟢' : '🔴'}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate">{emp.name}</div>
+                    <div className="text-xs truncate text-muted-foreground">{emp.rank}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+
       <div className="flex-1 flex flex-col min-w-0">
         {!activeEmployee ? (
-          <div className="flex-1 flex items-center justify-center text-slate-500">
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <p className="text-sm">Pilih karyawan dari daftar sebelah kanan</p>
           </div>
         ) : (
@@ -327,17 +371,19 @@ export default function ChatPage() {
               hasChats={!!(displayChats && displayChats.length > 0)}
               onClear={handleClear}
             />
-            <div className="flex-1 overflow-auto p-4 space-y-4">
-              {isStreaming && <StreamBubble content={streamingContent} reasoning={streamingReasoning} />}
-              {displayChats && displayChats.length > 0 && (
-                <ChatMessages
-                  chats={displayChats}
-                  subordinates={subordinates}
-                  onBroadcast={handleBroadcast}
-                  onSaveNote={handleSaveNote}
-                />
-              )}
-            </div>
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {isStreaming && <StreamBubble content={streamingContent} reasoning={streamingReasoning} />}
+                {displayChats && displayChats.length > 0 && (
+                  <ChatMessages
+                    chats={displayChats}
+                    subordinates={subordinates}
+                    onBroadcast={handleBroadcast}
+                    onSaveNote={handleSaveNote}
+                  />
+                )}
+              </div>
+            </ScrollArea>
             <ChatInput
               isStreaming={isStreaming}
               mode={mode}

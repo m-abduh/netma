@@ -3,6 +3,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 function FileIcon({ name, type }: { name: string; type: string }) {
   if (type === 'dir') return <span className="mr-1">📁</span>;
@@ -52,59 +58,58 @@ export default function FilesPage() {
     }
   };
 
-  const breadcrumbs = [{ name: dirInfo?.path?.split('/').pop() || 'workspace', dir: '' }, ...dirStack.map((d, i) => ({ name: d.split('/').pop() || d, dir: dirStack.slice(0, i + 1).join('/') }))];
-
   return (
     <div className="flex h-full">
-      <div className="w-72 border-r border-slate-700 flex flex-col shrink-0">
-        <div className="p-3 border-b border-slate-700 flex items-center gap-2">
+      <div className="w-72 border-r border-border flex flex-col shrink-0">
+        <div className="p-3 border-b border-border flex items-center gap-2">
           <span>📂</span>
           <span className="text-sm font-semibold truncate">{dirInfo?.path?.split('/').pop() || 'Workspace'}</span>
         </div>
-        <div className="flex-1 overflow-auto p-2 space-y-0.5">
+        <ScrollArea className="flex-1 p-2">
           {currentDir && (
-            <button onClick={goBack} className="flex items-center gap-1 w-full px-2 py-1 rounded text-sm text-slate-400 hover:text-white hover:bg-slate-700">
+            <Button variant="ghost" size="sm" className="w-full justify-start mb-1 text-muted-foreground" onClick={goBack}>
               ← Kembali
-            </button>
+            </Button>
           )}
           {items?.items?.map((item: any) => (
             <button
               key={item.path}
               onClick={() => item.type === 'dir' ? navigate(item.path) : openFile(item.path)}
-              className={`flex items-center gap-1 w-full px-2 py-1 rounded text-sm text-left hover:bg-slate-700 ${
-                selectedFile === item.path ? 'bg-slate-700 text-blue-400' : 'text-slate-300'
-              }`}
+              className={cn('flex items-center gap-1 w-full px-2 py-1 rounded text-sm text-left hover:bg-accent',
+                selectedFile === item.path ? 'bg-accent text-accent-foreground' : '')}
             >
               <FileIcon name={item.name} type={item.type} />
-              <span className="truncate">{item.name}</span>
+              <span className="truncate flex-1">{item.name}</span>
               {item.type === 'file' && item.size > 0 && (
-                <span className="ml-auto text-xs text-slate-600">{item.size > 1024 ? `${(item.size / 1024).toFixed(1)}KB` : `${item.size}B`}</span>
+                <span className="text-xs text-muted-foreground">{item.size > 1024 ? `${(item.size / 1024).toFixed(1)}KB` : `${item.size}B`}</span>
               )}
             </button>
           ))}
-          {items?.items?.length === 0 && <p className="text-xs text-slate-500 px-2 py-4 text-center">Kosong</p>}
-        </div>
+          {items?.items?.length === 0 && <p className="text-xs text-muted-foreground px-2 py-4 text-center">Kosong</p>}
+        </ScrollArea>
       </div>
 
       <div className="flex-1 flex flex-col">
         {!selectedFile ? (
-          <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
+          <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
             Pilih file dari sidebar
           </div>
         ) : (
           <>
-            <div className="p-3 border-b border-slate-700 text-sm text-slate-400 truncate">
+            <div className="p-3 border-b border-border text-sm text-muted-foreground truncate">
               📄 {selectedFile}
             </div>
-            <div className="flex-1 overflow-auto p-4">
+            <ScrollArea className="flex-1 p-4">
               {loadingContent ? (
-                <div className="text-slate-500 italic">Loading...</div>
+                <div className="space-y-2">
+                  {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-4 w-full" />)}
+                </div>
               ) : (
-                <pre className="text-sm text-slate-200 whitespace-pre-wrap font-mono leading-relaxed">
+                <pre className="text-sm text-foreground whitespace-pre-wrap font-mono leading-relaxed">
                   {fileContent}
                 </pre>
               )}
-            </div>
+            </ScrollArea>
           </>
         )}
       </div>
