@@ -46,6 +46,7 @@ model Job {
   schedule    String
   prompt      String
   status      String    @default("active")
+  mode        String    @default("plan")
   lastRun     DateTime?
   lastResult  String?
   lastOutput  String?

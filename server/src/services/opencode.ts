@@ -92,7 +92,7 @@ export async function chatWithEmployee(employee: {
         system: systemPrompt,
         parts: [{ type: 'text', text: prompt }],
       }),
-      signal: AbortSignal.timeout(180000),
+      signal: AbortSignal.timeout(600000),
     });
 
     const parts: any[] = msgRes.parts || [];

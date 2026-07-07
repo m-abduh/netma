@@ -2,40 +2,84 @@ import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 import { chatWithEmployee } from './opencode';
 
-export function initScheduler(prisma: PrismaClient) {
-  cron.schedule('* * * * *', async () => {
-    try {
-      const jobs = await prisma.job.findMany({
-        where: { status: 'active' },
-        include: { employee: true },
-      });
+interface ScheduledTask {
+  task: cron.ScheduledTask;
+  jobId: string;
+}
 
-      for (const job of jobs) {
-        if (!cron.validate(job.schedule)) continue;
-        if (job.employee.status !== 'online') continue;
+const scheduledTasks = new Map<string, ScheduledTask>();
 
-        try {
-          const output = await chatWithEmployee(job.employee, job.prompt);
+function scheduleJob(prisma: PrismaClient, job: any) {
+  if (job.status !== 'active' || job.employee.status !== 'online') return;
 
-          await prisma.job.update({
-            where: { id: job.id },
-            data: { lastRun: new Date(), lastResult: 'success', lastOutput: output },
-          });
-          await prisma.auditLog.create({
-            data: { actor: 'System', action: 'Job trigger', target: job.id, detail: `"${job.name}" → ${job.employee.name} ✅` },
-          });
-        } catch (err: any) {
-          await prisma.job.update({
-            where: { id: job.id },
-            data: { lastRun: new Date(), lastResult: 'failed', lastOutput: err.message },
-          });
-          await prisma.auditLog.create({
-            data: { actor: 'System', action: 'Job error', target: job.id, detail: `"${job.name}" gagal - ${err.message}` },
-          });
-        }
+  const existing = scheduledTasks.get(job.id);
+  if (existing) existing.task.stop();
+
+  try {
+    const task = cron.schedule(job.schedule, async () => {
+      try {
+        const output = await chatWithEmployee(job.employee, job.prompt, job.mode || 'plan');
+
+        await prisma.job.update({
+          where: { id: job.id },
+          data: { lastRun: new Date(), lastResult: 'success', lastOutput: output },
+        });
+        await prisma.auditLog.create({
+          data: { actor: 'System', action: 'Job trigger', target: job.id, detail: `"${job.name}" → ${job.employee.name} ✅` },
+        });
+      } catch (err: any) {
+        await prisma.job.update({
+          where: { id: job.id },
+          data: { lastRun: new Date(), lastResult: 'failed', lastOutput: err.message },
+        });
+        await prisma.auditLog.create({
+          data: { actor: 'System', action: 'Job error', target: job.id, detail: `"${job.name}" gagal - ${err.message}` },
+        });
       }
-    } catch (err) {
-      console.error('Scheduler error:', err);
-    }
+    });
+
+    scheduledTasks.set(job.id, { task, jobId: job.id });
+  } catch (err) {
+    console.error(`Failed to schedule job ${job.id}:`, err);
+  }
+}
+
+export function initScheduler(prisma: PrismaClient) {
+  prisma.job.findMany({
+    where: { status: 'active' },
+    include: { employee: true },
+  }).then(jobs => {
+    jobs.forEach(job => scheduleJob(prisma, job));
   });
+
+  // Re-check every 5 min for jobs not yet scheduled (e.g. employee just came online)
+  cron.schedule('*/5 * * * *', () => {
+    prisma.job.findMany({
+      where: { status: 'active' },
+      include: { employee: true },
+    }).then(jobs => {
+      jobs.forEach(job => {
+        if (!scheduledTasks.has(job.id)) {
+          scheduleJob(prisma, job);
+        }
+      });
+    });
+  });
+}
+
+export function rescheduleJob(prisma: PrismaClient, jobId: string) {
+  prisma.job.findUnique({
+    where: { id: jobId },
+    include: { employee: true },
+  }).then(job => {
+    if (job) scheduleJob(prisma, job);
+  });
+}
+
+export function cancelJob(jobId: string) {
+  const existing = scheduledTasks.get(jobId);
+  if (existing) {
+    existing.task.stop();
+    scheduledTasks.delete(jobId);
+  }
 }

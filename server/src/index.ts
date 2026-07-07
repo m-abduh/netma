@@ -22,7 +22,10 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true,
+}));
 app.use(express.json());
 
 app.use((req, _res, next) => {
@@ -133,7 +136,6 @@ async function start() {
     execSync('pkill -f "opencode serve" 2>/dev/null; for p in $(seq 21000 21999); do fuser -k $p/tcp 2>/dev/null; done', { stdio: 'ignore' });
   } catch {}
 
-  initScheduler(prisma);
   app.listen(PORT, async () => {
     console.log(`Netma server running on http://localhost:${PORT}`);
 
@@ -150,6 +152,8 @@ async function start() {
       if (r.status === 'rejected') console.error(`  ${employees[i].name}: ${r.reason.message}`);
     });
     console.log(`Auto-started ${started}/${employees.length} karyawan`);
+
+    initScheduler(prisma);
   });
 }
 

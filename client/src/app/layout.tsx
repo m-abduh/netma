@@ -40,7 +40,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: { queries: { refetchOnWindowFocus: false } },
+  }));
 
   return (
     <html lang="id">
