@@ -201,10 +201,18 @@ export default function DashboardPage() {
           className="bg-slate-900"
         >
           <Background color="#334155" gap={20} />
-          <Controls className="!bg-black !border-0 !shadow-lg rounded-lg overflow-hidden !text-slate-300" />
-          <style jsx global>{`
-            .react-flow__attribution { display: none !important; }
-          `}</style>
+          <Controls
+            className="!bg-black !border-0 !shadow-lg rounded-lg overflow-hidden"
+            style={{ backgroundColor: '#000', border: 'none' }}
+          >
+            <style jsx global>{`
+              .react-flow__attribution { display: none !important; }
+              .react-flow__controls { background: #000 !important; border: none !important; border-radius: 8px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important; }
+              .react-flow__controls button { color: #94a3b8 !important; background: transparent !important; }
+              .react-flow__controls button path { fill: #94a3b8 !important; stroke: #94a3b8 !important; }
+              .react-flow__controls button svg { color: #94a3b8 !important; fill: #94a3b8 !important; }
+            `}</style>
+          </Controls>
         </ReactFlow>
       </div>
     </div>
