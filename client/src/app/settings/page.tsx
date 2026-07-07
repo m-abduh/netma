@@ -94,7 +94,7 @@ export default function SettingsPage() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Manajemen Karyawan</h2>
+        <h2 className="text-2xl font-bold">Manajemen Perusahaan</h2>
         <Dialog open={showAdd} onOpenChange={(o) => { if (!o) { setShowAdd(false); setEditingId(null); } setShowAdd(o); }}>
           <DialogTrigger
             render={

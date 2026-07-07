@@ -20,7 +20,6 @@ import {
   ScrollText,
   Settings,
   LogOut,
-  Menu,
   Users,
 } from 'lucide-react';
 
@@ -102,7 +101,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
         </div>
         <div>
           <h1 className="text-base font-semibold leading-tight">Netma</h1>
-          <p className="text-[11px] text-muted-foreground leading-tight">Manajemen Karyawan</p>
+          <p className="text-[11px] text-muted-foreground leading-tight">Manajemen Perusahaan</p>
         </div>
       </div>
 
@@ -136,11 +135,21 @@ export default function Sidebar() {
     <>
       {/* Mobile header bar */}
       <header className="flex lg:hidden items-center justify-between h-14 px-4 border-b border-border bg-card/95 backdrop-blur-md sticky top-0 z-40 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-md bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center">
+            N
+          </div>
+          <span className="text-sm font-semibold">{pageTitles[pathname] || 'Netma'}</span>
+        </div>
+
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger
             render={
-              <Button variant="ghost" size="icon" className="-ml-2">
-                <Menu className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="-mr-2">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="4" y1="7" x2="20" y2="7" />
+                  <line x1="4" y1="17" x2="20" y2="17" />
+                </svg>
               </Button>
             }
           />
@@ -151,15 +160,6 @@ export default function Sidebar() {
             <SidebarContent onNavClick={() => setMobileOpen(false)} />
           </SheetContent>
         </Sheet>
-
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-md bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center">
-            N
-          </div>
-          <span className="text-sm font-semibold">{pageTitles[pathname] || 'Netma'}</span>
-        </div>
-
-        <div className="w-10" />
       </header>
 
       {/* Desktop sidebar */}

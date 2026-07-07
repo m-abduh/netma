@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect, memo } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, memo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -108,11 +108,18 @@ const ChatInput = memo(function ChatInput({
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const LINE_HEIGHT = 22;
+  const MAX_LINES = 4;
+
+  useEffect(() => {
+    if (textareaRef.current) textareaRef.current.style.height = `${LINE_HEIGHT}px`;
+  }, []);
+
   const handleSend = () => {
     if (!text.trim()) return;
     onSend(text);
     setText('');
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    if (textareaRef.current) textareaRef.current.style.height = `${LINE_HEIGHT}px`;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -125,8 +132,9 @@ const ChatInput = memo(function ChatInput({
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
     const el = e.target;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+    el.style.height = `${LINE_HEIGHT}px`;
+    const lines = Math.min(Math.ceil(el.scrollHeight / LINE_HEIGHT), MAX_LINES);
+    el.style.height = `${lines * LINE_HEIGHT}px`;
   };
 
   return (
@@ -151,9 +159,9 @@ const ChatInput = memo(function ChatInput({
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Ketik prompt... (Enter kirim, Shift+Enter baris baru)"
+          placeholder="Ketik pesan..."
           disabled={isStreaming}
-          className="flex-1 min-h-[40px] max-h-[160px] resize-none py-2.5"
+          className="flex-1 resize-none py-2 min-h-0 field-sizing-fixed"
           rows={1}
         />
         {isStreaming ? (
@@ -187,18 +195,12 @@ const MobileEmployeeSheet = memo(function MobileEmployeeSheet({
         </SheetHeader>
         <div className="flex flex-col gap-1 mt-4">
           {employees.map((emp: Employee) => (
-            <SheetClose key={emp.id} asChild>
-              <button
-                onClick={() => onSelect(emp.id)}
-                className={cn('flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-left hover:bg-accent transition-colors',
-                  activeChat === emp.id ? 'bg-accent' : '')}
-              >
-                <span>{emp.status === 'online' ? '🟢' : '🔴'}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="truncate">{emp.name}</div>
-                  <div className="text-xs truncate text-muted-foreground">{emp.rank}</div>
-                </div>
-              </button>
+            <SheetClose key={emp.id} onClick={() => onSelect(emp.id)} className={cn('flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-left hover:bg-accent transition-colors', activeChat === emp.id ? 'bg-accent' : '')}>
+              <span>{emp.status === 'online' ? '🟢' : '🔴'}</span>
+              <div className="flex-1 min-w-0">
+                <div className="truncate">{emp.name}</div>
+                <div className="text-xs truncate text-muted-foreground">{emp.rank}</div>
+              </div>
             </SheetClose>
           ))}
         </div>

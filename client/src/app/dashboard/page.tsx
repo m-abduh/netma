@@ -171,22 +171,17 @@ export default function DashboardPage() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between p-4 bg-card/50 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold">Dashboard</h2>
-          <div className="flex gap-2">
-            <Badge variant="outline">Total: {employees?.length || 0}</Badge>
-            <Badge variant="outline" className="text-green-400 border-green-400/30">Online: {online}</Badge>
-            <Badge variant="outline" className="text-red-400 border-red-400/30">Offline: {(employees?.length || 0) - online}</Badge>
-          </div>
-        </div>
+      <div className="fixed top-16 lg:top-4 right-4 z-50 flex flex-wrap items-center gap-2">
+        <Badge variant="outline">Total: {employees?.length || 0}</Badge>
+        <Badge variant="outline" className="text-green-400 border-green-400/30">Online: {online}</Badge>
+        <Badge variant="outline" className="text-red-400 border-red-400/30">Offline: {(employees?.length || 0) - online}</Badge>
         {hasChanges && (
-          <div className="flex gap-2">
+          <>
             <Button variant="secondary" size="sm" onClick={cancelChanges}>Batal</Button>
             <Button variant="default" size="sm" onClick={savePositions} disabled={saving}>
               {saving ? 'Menyimpan...' : 'Simpan Posisi'}
             </Button>
-          </div>
+          </>
         )}
       </div>
       <div className="flex-1 min-h-0">
