@@ -5,7 +5,7 @@ const router = Router();
 
 router.get('/', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
-  const { date, actor, action, page = '1', limit = '50' } = req.query;
+  const { date, actor, action, page = '1', limit = '15' } = req.query;
   const skip = (Number(page) - 1) * Number(limit);
   const where: any = {};
 

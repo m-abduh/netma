@@ -8,17 +8,18 @@ import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import type { Employee } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetTrigger, SheetClose, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
 const ChatHeader = memo(function ChatHeader({
-  name, rank, subordinates, hasChats, onClear,
+  name, rank, subordinates, hasChats, onClear, mobileTrigger,
 }: {
   name: string; rank: string; subordinates: number; hasChats: boolean; onClear: () => void;
+  mobileTrigger?: React.ReactNode;
 }) {
   return (
     <div className="p-4 border-b border-border flex items-center justify-between">
@@ -27,9 +28,12 @@ const ChatHeader = memo(function ChatHeader({
         <p className="text-sm text-muted-foreground">{rank}</p>
         {subordinates > 0 && <p className="text-xs text-muted-foreground mt-1">{subordinates} bawahan</p>}
       </div>
-      {hasChats && (
-        <Button variant="ghost" size="sm" onClick={onClear} className="text-destructive hover:text-destructive">Hapus</Button>
-      )}
+      <div className="flex items-center gap-2">
+        <div className="md:hidden">{mobileTrigger}</div>
+        {hasChats && (
+          <Button variant="ghost" size="sm" onClick={onClear} className="text-destructive hover:text-destructive">Hapus</Button>
+        )}
+      </div>
     </div>
   );
 });
@@ -102,18 +106,33 @@ const ChatInput = memo(function ChatInput({
   isStreaming: boolean; mode: 'plan' | 'build'; onModeChange: (m: 'plan' | 'build') => void; onSend: (msg: string) => void; onStop: () => void;
 }) {
   const [text, setText] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
     if (!text.trim()) return;
     onSend(text);
     setText('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value);
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   };
 
   return (
     <div className="p-4 border-t border-border">
-      <div className="flex gap-2 items-center">
-        <div className="flex bg-muted rounded-lg p-0.5 text-xs shrink-0">
+      <div className="flex gap-2 items-end">
+        <div className="flex bg-muted rounded-lg p-0.5 text-xs shrink-0 mb-1">
           <button
             onClick={() => onModeChange('plan')}
             className={cn('px-3 py-1.5 rounded-md transition-colors', mode === 'plan' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
@@ -127,22 +146,64 @@ const ChatInput = memo(function ChatInput({
             Build
           </button>
         </div>
-        <Input
-          ref={inputRef as any}
+        <Textarea
+          ref={textareaRef as any}
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          placeholder="Ketik prompt..."
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          placeholder="Ketik prompt... (Enter kirim, Shift+Enter baris baru)"
           disabled={isStreaming}
-          className="flex-1"
+          className="flex-1 min-h-[40px] max-h-[160px] resize-none py-2.5"
+          rows={1}
         />
         {isStreaming ? (
-          <Button variant="destructive" size="default" onClick={onStop} className="shrink-0">Stop</Button>
+          <Button variant="destructive" size="default" onClick={onStop} className="shrink-0 mb-1">Stop</Button>
         ) : (
-          <Button variant="default" size="default" onClick={handleSend} disabled={!text.trim()} className="shrink-0">Kirim</Button>
+          <Button variant="default" size="default" onClick={handleSend} disabled={!text.trim()} className="shrink-0 mb-1">Kirim</Button>
         )}
       </div>
     </div>
+  );
+});
+
+const MobileEmployeeSheet = memo(function MobileEmployeeSheet({
+  employees, activeChat, onSelect,
+}: {
+  employees: Employee[]; activeChat: string | null; onSelect: (id: string) => void;
+}) {
+  return (
+    <Sheet>
+      <SheetTrigger
+        render={
+          <Button variant="outline" size="sm" className="flex items-center gap-1">
+            <span>👥</span>
+            Karyawan
+          </Button>
+        }
+      />
+      <SheetContent side="right" className="w-72">
+        <SheetHeader>
+          <SheetTitle>Karyawan</SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-col gap-1 mt-4">
+          {employees.map((emp: Employee) => (
+            <SheetClose key={emp.id} asChild>
+              <button
+                onClick={() => onSelect(emp.id)}
+                className={cn('flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-left hover:bg-accent transition-colors',
+                  activeChat === emp.id ? 'bg-accent' : '')}
+              >
+                <span>{emp.status === 'online' ? '🟢' : '🔴'}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="truncate">{emp.name}</div>
+                  <div className="text-xs truncate text-muted-foreground">{emp.rank}</div>
+                </div>
+              </button>
+            </SheetClose>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 });
 
@@ -322,45 +383,17 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full">
-      {/* Mobile employee list sheet */}
-      <div className="md:hidden absolute z-50 m-2">
-        <Sheet>
-          <SheetTrigger
-            render={
-              <Button variant="outline" size="sm" className="flex items-center gap-1">
-                <span>👥</span>
-                Karyawan
-              </Button>
-            }
-          />
-          <SheetContent side="right" className="w-72">
-            <SheetHeader>
-              <SheetTitle>Karyawan</SheetTitle>
-            </SheetHeader>
-            <div className="flex flex-col gap-1 mt-4">
-              {employeeList.map((emp: Employee) => (
-                <button
-                  key={emp.id}
-                  onClick={() => { setActiveChat(emp.id); }}
-                  className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left hover:bg-accent transition-colors',
-                    activeChat === emp.id ? 'bg-accent' : '')}
-                >
-                  <span>{emp.status === 'online' ? '🟢' : '🔴'}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate">{emp.name}</div>
-                    <div className="text-xs truncate text-muted-foreground">{emp.rank}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
-
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {!activeEmployee ? (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            <p className="text-sm">Pilih karyawan dari daftar sebelah kanan</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4">
+            <div className="md:hidden">
+              <MobileEmployeeSheet
+                employees={employeeList}
+                activeChat={activeChat}
+                onSelect={setActiveChat}
+              />
+            </div>
+            <p className="text-sm">Pilih karyawan dari daftar</p>
           </div>
         ) : (
           <>
@@ -370,8 +403,15 @@ export default function ChatPage() {
               subordinates={subordinates.length}
               hasChats={!!(displayChats && displayChats.length > 0)}
               onClear={handleClear}
+              mobileTrigger={
+                <MobileEmployeeSheet
+                  employees={employeeList}
+                  activeChat={activeChat}
+                  onSelect={setActiveChat}
+                />
+              }
             />
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 min-h-0 p-4">
               <div className="space-y-4">
                 {isStreaming && <StreamBubble content={streamingContent} reasoning={streamingReasoning} />}
                 {displayChats && displayChats.length > 0 && (

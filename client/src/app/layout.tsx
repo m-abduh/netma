@@ -36,9 +36,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen flex-col lg:flex-row">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 min-h-0 overflow-auto lg:pt-0">
         {children}
       </main>
     </div>

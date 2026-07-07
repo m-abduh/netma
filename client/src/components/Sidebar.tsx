@@ -35,6 +35,17 @@ const menuItems: { path: string; label: string; icon: typeof LayoutDashboard }[]
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
+const pageTitles: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/chat': 'Chat',
+  '/notes': 'Notes',
+  '/jobs': 'Daily Jobs',
+  '/broadcast': 'Broadcast',
+  '/files': 'Files',
+  '/logs': 'Logs',
+  '/settings': 'Settings',
+};
+
 function NavItem({ item, active, onClick }: { item: typeof menuItems[0]; active: boolean; onClick: () => void }) {
   const Icon = item.icon;
   return (
@@ -77,17 +88,15 @@ function NavContent({ onNavClick }: { onNavClick?: () => void }) {
   );
 }
 
-export default function Sidebar() {
+function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
   const online = employees?.filter((e: Employee) => e.status === 'online').length || 0;
-  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const sidebarContent = (
+  return (
     <aside className="flex flex-col h-full bg-card border-r border-border">
-      {/* Brand */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
           N
         </div>
@@ -97,10 +106,9 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <NavContent onNavClick={() => setMobileOpen(false)} />
+      <NavContent onNavClick={onNavClick} />
 
-      {/* Footer */}
-      <div className="border-t border-border p-3 space-y-2">
+      <div className="border-t border-border p-3 space-y-2 shrink-0">
         <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
           <Users className="h-3.5 w-3.5" />
           <span>
@@ -118,33 +126,45 @@ export default function Sidebar() {
       </div>
     </aside>
   );
+}
+
+export default function Sidebar() {
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <>
-      {/* Mobile trigger */}
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon"
-              className="fixed top-3 left-3 z-50 lg:hidden bg-background/80 backdrop-blur-sm border border-border shadow-sm"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          }
-        />
-        <SheetContent side="left" className="w-72 p-0">
-          <SheetHeader className="sr-only">
-            <SheetTitle>Navigasi</SheetTitle>
-          </SheetHeader>
-          {sidebarContent}
-        </SheetContent>
-      </Sheet>
+      {/* Mobile header bar */}
+      <header className="flex lg:hidden items-center justify-between h-14 px-4 border-b border-border bg-card/95 backdrop-blur-md sticky top-0 z-40 shrink-0">
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger
+            render={
+              <Button variant="ghost" size="icon" className="-ml-2">
+                <Menu className="h-5 w-5" />
+              </Button>
+            }
+          />
+          <SheetContent side="left" className="w-72 p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Navigasi</SheetTitle>
+            </SheetHeader>
+            <SidebarContent onNavClick={() => setMobileOpen(false)} />
+          </SheetContent>
+        </Sheet>
+
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-md bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center">
+            N
+          </div>
+          <span className="text-sm font-semibold">{pageTitles[pathname] || 'Netma'}</span>
+        </div>
+
+        <div className="w-10" />
+      </header>
 
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:w-64 lg:flex-col lg:h-screen lg:shrink-0">
-        {sidebarContent}
+        <SidebarContent />
       </div>
     </>
   );
