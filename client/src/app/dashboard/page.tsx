@@ -200,7 +200,7 @@ export default function DashboardPage() {
           deleteKeyCode={null}
           className="bg-slate-900"
         >
-          <Background color="#334155" gap={20} />
+          <Background color="#334155" gap={20} bgColor="#0f172a" />
           <Controls
             className="!bg-black !border-0 !shadow-lg rounded-lg overflow-hidden"
             style={{ backgroundColor: '#000', border: 'none' }}
@@ -211,6 +211,8 @@ export default function DashboardPage() {
               .react-flow__controls button { color: #94a3b8 !important; background: transparent !important; }
               .react-flow__controls button path { fill: #94a3b8 !important; stroke: #94a3b8 !important; }
               .react-flow__controls button svg { color: #94a3b8 !important; fill: #94a3b8 !important; }
+              .react-flow__controls button:hover { background: #1e293b !important; }
+              .react-flow__controls button:focus { outline: none; box-shadow: none; }
             `}</style>
           </Controls>
         </ReactFlow>
