@@ -45,10 +45,14 @@ function stripMarkdown(text: string): string {
     .replace(/~~(.*?)~~/g, '$1')
     .replace(/`{1,3}(.*?)`{1,3}/g, '$1')
     .replace(/```[\s\S]*?```/g, '')
+    .replace(/---/g, '')
+    .replace(/___/g, '')
+    .replace(/\*\*\*/g, '')
     .replace(/> /g, '')
     .replace(/^#+\s/gm, '')
     .replace(/^\s*[-*+]\s/gm, '')
     .replace(/^\s*\d+\.\s/gm, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .trim();
 }
 
@@ -63,8 +67,8 @@ function EmployeeNode({ data }: { data: any }) {
       <div className="text-xs text-slate-400">{data.rank}</div>
       <div className={`mt-2 mx-auto w-2.5 h-2.5 rounded-full ${data.online ? 'bg-green-400' : 'bg-red-400'}`} />
       {data.lastChat && (
-        <div className="mt-2 text-[10px] text-slate-500 leading-tight line-clamp-3 max-w-[160px] mx-auto truncate">
-          {data.lastChat}
+        <div className="mt-2 text-[10px] text-slate-500 leading-tight line-clamp-3 max-w-[160px] mx-auto">
+          {stripMarkdown(data.lastChat)}
         </div>
       )}
       <Handle type="source" position={Position.Bottom} isConnectable={false} className="!border-slate-600" />
