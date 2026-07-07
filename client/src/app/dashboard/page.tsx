@@ -199,11 +199,12 @@ export default function DashboardPage() {
           defaultEdgeOptions={{ type: 'smoothstep', animated: true, style: { stroke: '#475569', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#475569' } }}
           deleteKeyCode={null}
           className="bg-slate-900"
-          attributionPosition="bottom-right"
         >
           <Background color="#334155" gap={20} />
-          <Controls className="!bg-black !border-0 !shadow-lg rounded-lg overflow-hidden" />
-          <div className="rf-attribution" style={{ display: 'none' }} />
+          <Controls className="!bg-black !border-0 !shadow-lg rounded-lg overflow-hidden !text-slate-300" />
+          <style jsx global>{`
+            .react-flow__attribution { display: none !important; }
+          `}</style>
         </ReactFlow>
       </div>
     </div>
