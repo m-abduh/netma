@@ -20,7 +20,7 @@ router.post('/', async (req: Request, res: Response) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
-  const employees = await prisma.employee.findMany({ where: { status: 'online' } });
+  const employees = await prisma.employee.findMany();
   if (employees.length === 0) return res.json({ results: [] });
 
   req.setTimeout(300000);

@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { clearAuth } from '@/lib/auth';
-import type { Employee } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -91,7 +90,6 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
-  const online = employees?.filter((e: Employee) => e.status === 'online').length || 0;
 
   return (
     <aside className="flex flex-col h-full bg-card border-r border-border">
@@ -112,7 +110,6 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
           <Users className="h-3.5 w-3.5" />
           <span>
             {employees?.length || 0} karyawan
-            <span className="ml-1 text-green-400">({online} online)</span>
           </span>
         </div>
         <button

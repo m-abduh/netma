@@ -34,7 +34,6 @@ export default function EmployeeCard({
             <p className="text-sm text-slate-400">{employee.rank}</p>
           </div>
         </div>
-        <div className={`w-3 h-3 rounded-full ${employee.status === 'online' ? 'bg-green-400' : 'bg-red-400'}`} />
       </div>
       <p className="text-sm text-slate-400 mt-3 line-clamp-2">{employee.jobDesc}</p>
       {lastChat && (

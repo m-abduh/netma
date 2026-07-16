@@ -1,8 +1,11 @@
 import { readFileSync, writeFileSync, existsSync, statSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
 import { resolve } from 'path';
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { globSync } from 'glob';
 import { grep } from './grep';
+
+const execAsync = promisify(exec);
 
 export interface ToolContext {
   isPathAllowed: (path: string) => boolean;
@@ -60,12 +63,14 @@ export function createTools(guardrails: ToolContext, commandTimeout: number) {
       const cwd = workdir ? resolve(rootDir, workdir) : rootDir;
       const t = timeout || commandTimeout;
       try {
-        const stdout = execSync(command, { cwd, timeout: t, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
-        const lines = stdout.split('\n');
+        const { stdout, stderr } = await execAsync(command, { cwd, timeout: t, maxBuffer: 10 * 1024 * 1024 });
+        let output = stdout || '';
+        if (stderr) output += '\n' + stderr;
+        const lines = output.split('\n');
         if (lines.length > 10000) {
           return lines.slice(0, 10000).join('\n') + '\n... (truncated, 10000 lines max)';
         }
-        return stdout || '(no output)';
+        return output || '(no output)';
       } catch (e: any) {
         if (e.stdout) return e.stdout + '\n' + (e.stderr || '');
         throw new Error(e.stderr || e.message);

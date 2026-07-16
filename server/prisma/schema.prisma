@@ -13,7 +13,6 @@ model Employee {
   rank      String
   jobDesc   String
   model     String   @default("llama-3.3-70b-versatile")
-  status    String   @default("offline")
   positionX Float    @default(0)
   positionY Float    @default(0)
   supervisorId String?

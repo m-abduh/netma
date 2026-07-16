@@ -52,9 +52,6 @@ router.post('/:id/run-now', async (req: Request, res: Response) => {
     include: { employee: true },
   });
   if (!job) return res.status(404).json({ error: 'Job not found' });
-  if (job.employee.status !== 'online') {
-    return res.status(400).json({ error: 'Employee is offline' });
-  }
 
   await prisma.job.update({
     where: { id: job.id },

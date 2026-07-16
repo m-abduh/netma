@@ -10,7 +10,7 @@ interface ScheduledTask {
 const scheduledTasks = new Map<string, ScheduledTask>();
 
 function scheduleJob(prisma: PrismaClient, job: any) {
-  if (job.status !== 'active' || job.employee.status !== 'online') return;
+  if (job.status !== 'active') return;
 
   const existing = scheduledTasks.get(job.id);
   if (existing) existing.task.stop();

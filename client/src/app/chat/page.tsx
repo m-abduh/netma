@@ -196,7 +196,6 @@ const MobileEmployeeSheet = memo(function MobileEmployeeSheet({
         <div className="flex flex-col gap-1 mt-4">
           {employees.map((emp: Employee) => (
             <SheetClose key={emp.id} onClick={() => onSelect(emp.id)} className={cn('flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-left hover:bg-accent transition-colors', activeChat === emp.id ? 'bg-accent' : '')}>
-              <span>{emp.status === 'online' ? '🟢' : '🔴'}</span>
               <div className="flex-1 min-w-0">
                 <div className="truncate">{emp.name}</div>
                 <div className="text-xs truncate text-muted-foreground">{emp.rank}</div>
@@ -225,10 +224,8 @@ const EmployeeList = memo(function EmployeeList({
             key={emp.id}
             onClick={() => onSelect(emp.id)}
             className={cn('flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-accent transition-colors',
-              activeChat === emp.id ? 'bg-accent' : '',
-              emp.status === 'online' ? '' : 'text-muted-foreground')}
+              activeChat === emp.id ? 'bg-accent' : '')}
           >
-            <span>{emp.status === 'online' ? '🟢' : '🔴'}</span>
             <div className="flex-1 min-w-0">
               <div className="truncate">{emp.name}</div>
               <div className="text-xs truncate text-muted-foreground">{emp.rank}</div>

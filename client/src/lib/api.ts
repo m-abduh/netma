@@ -19,8 +19,6 @@ export const api = {
     create: (data: any) => request<any>('/api/employees', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: any) => request<any>(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) => request<any>(`/api/employees/${id}`, { method: 'DELETE' }),
-    turnOn: (id: string) => request<any>(`/api/employees/${id}/turn-on`, { method: 'POST' }),
-    turnOff: (id: string) => request<any>(`/api/employees/${id}/turn-off`, { method: 'POST' }),
   },
   edges: {
     list: () => request<any[]>('/api/edges'),

@@ -4,7 +4,6 @@ export interface Employee {
   rank: string;
   jobDesc: string;
   model: string;
-  status: string;
   supervisorId: string | null;
   createdAt: string;
   updatedAt: string;

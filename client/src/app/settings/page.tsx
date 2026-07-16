@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import DirBrowser from '@/components/DirBrowser';
 import type { Employee } from '@/lib/types';
@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -68,14 +67,6 @@ export default function SettingsPage() {
     queryClient.invalidateQueries({ queryKey: ['employees'] });
     toast.success('Karyawan dihapus');
   };
-
-  const toggleMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      status === 'online' ? api.employees.turnOff(id) : api.employees.turnOn(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-    },
-  });
 
   const startEdit = (emp: Employee) => {
     setForm({ name: emp.name, rank: emp.rank, jobDesc: emp.jobDesc, model: emp.model, supervisorId: emp.supervisorId || '' });
@@ -177,19 +168,8 @@ export default function SettingsPage() {
                 <TableCell className="text-xs text-muted-foreground">{employees?.find((e: Employee) => e.id === emp.supervisorId)?.name || '-'}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{emp.model}</TableCell>
                 <TableCell>
-                  <Badge variant={emp.status === 'online' ? 'default' : 'destructive'}>{emp.status}</Badge>
-                </TableCell>
-                <TableCell>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => startEdit(emp)}>Edit</Button>
-                    <Button
-                      variant={emp.status === 'online' ? 'destructive' : 'default'}
-                      size="sm"
-                      onClick={() => toggleMutation.mutate({ id: emp.id, status: emp.status })}
-                      disabled={toggleMutation.isPending}
-                    >
-                      {emp.status === 'online' ? 'OFF' : 'ON'}
-                    </Button>
                     <Button variant="destructive" size="sm" onClick={() => deleteEmployee(emp.id)}>Hapus</Button>
                   </div>
                 </TableCell>

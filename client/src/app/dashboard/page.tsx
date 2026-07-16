@@ -167,14 +167,12 @@ export default function DashboardPage() {
     setHasChanges(true);
   }, []);
 
-  const online = employees?.filter((e: Employee) => e.status === 'online').length || 0;
+  const total = employees?.length || 0;
 
   return (
     <div className="h-full flex flex-col">
       <div className="fixed top-16 lg:top-4 right-4 z-50 flex flex-wrap items-center gap-2">
-        <Badge variant="outline">Total: {employees?.length || 0}</Badge>
-        <Badge variant="outline" className="text-green-400 border-green-400/30">Online: {online}</Badge>
-        <Badge variant="outline" className="text-red-400 border-red-400/30">Offline: {(employees?.length || 0) - online}</Badge>
+        <Badge variant="outline">Total: {total}</Badge>
         {hasChanges && (
           <>
             <Button variant="secondary" size="sm" onClick={cancelChanges}>Batal</Button>

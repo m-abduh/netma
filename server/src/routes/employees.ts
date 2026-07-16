@@ -69,42 +69,4 @@ router.delete('/:id', async (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
-router.post('/:id/turn-on', async (req: Request, res: Response) => {
-  const prisma: PrismaClient = (req as any).prisma;
-  const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
-  if (!employee) return res.status(404).json({ error: 'Not found' });
-
-  try {
-    const updated = await prisma.employee.update({
-      where: { id: employee.id },
-      data: { status: 'online' },
-    });
-    await prisma.auditLog.create({
-      data: { actor: 'Bos', action: 'Turn ON/OFF', target: employee.id, detail: `${employee.name} → ON` },
-    });
-    res.json(updated);
-  } catch (err: any) {
-    res.status(500).json({ error: `Failed to turn on: ${err.message}` });
-  }
-});
-
-router.post('/:id/turn-off', async (req: Request, res: Response) => {
-  const prisma: PrismaClient = (req as any).prisma;
-  const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
-  if (!employee) return res.status(404).json({ error: 'Not found' });
-
-  try {
-    const updated = await prisma.employee.update({
-      where: { id: employee.id },
-      data: { status: 'offline' },
-    });
-    await prisma.auditLog.create({
-      data: { actor: 'Bos', action: 'Turn ON/OFF', target: employee.id, detail: `${employee.name} → OFF` },
-    });
-    res.json(updated);
-  } catch (err: any) {
-    res.status(500).json({ error: `Failed to turn off: ${err.message}` });
-  }
-});
-
 export { router as employeesRouter };

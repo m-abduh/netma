@@ -128,8 +128,6 @@ app.get('*', (_req, res) => {
 async function start() {
   await prisma.$connect();
 
-  await prisma.employee.updateMany({ where: { status: 'online' }, data: { status: 'offline' } });
-
   app.listen(PORT, () => {
     console.log(`Netma server running on http://localhost:${PORT}`);
     initScheduler(prisma);
