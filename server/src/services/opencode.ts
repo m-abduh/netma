@@ -13,7 +13,7 @@ function buildConfig(model: string) {
     max_iterations: 25,
     command_timeout: 60000,
     task_timeout: 300000,
-    blacklist: ['sudo', 'su', 'passwd'],
+    blacklist: [],
     working_dir: getProjectDir(),
   };
 }
@@ -61,14 +61,23 @@ export async function chatWithEmployee(
     subordinates?: { name: string; rank: string }[];
   },
   prompt: string,
-  mode: 'plan' | 'build' = 'plan'
+  mode: 'plan' | 'build' = 'plan',
+  history?: { role: string; content: string }[]
 ): Promise<string> {
   const systemPrompt = buildSystemPrompt(employee, mode);
   const config = buildConfig(employee.model);
 
-  const messages = [
+  const messages: any[] = [
     { role: 'system' as const, content: systemPrompt },
   ];
+
+  if (history && history.length > 0) {
+    for (const msg of history) {
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+    }
+  }
 
   const result = await runLoop(prompt, config, messages);
 

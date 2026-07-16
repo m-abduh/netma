@@ -33,7 +33,6 @@ router.post('/', async (req: Request, res: Response) => {
 
   const results = await Promise.allSettled(
     enriched.map(async (emp) => {
-      if (!emp.port) throw new Error('Employee has no port assigned');
       const output = await chatWithEmployee(emp, prompt);
       await prisma.chat.create({ data: { employeeId: emp.id, role: 'assistant', content: output } });
       return { id: emp.id, name: emp.name, success: true as const, output };

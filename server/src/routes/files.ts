@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
+import { getProjectDir } from '../config';
 
 const router = Router({ mergeParams: true });
 
@@ -14,7 +15,7 @@ router.get('/', async (req: Request, res: Response) => {
     orderBy: { createdAt: 'desc' },
   });
 
-  const workDir = path.join(process.env.HOME || '/tmp', '.opencode', employeeId);
+  const workDir = path.join(getProjectDir(), employeeId);
   let fsFiles: string[] = [];
   try {
     fsFiles = await walkDir(workDir);
@@ -30,7 +31,7 @@ router.get('/read', async (req: Request, res: Response) => {
   const { filepath } = req.query;
 
   if (filepath) {
-    const fullPath = path.join(process.env.HOME || '/tmp', '.opencode', employeeId, String(filepath));
+    const fullPath = path.join(getProjectDir(), employeeId, String(filepath));
     try {
       await fs.access(fullPath);
       const content = await fs.readFile(fullPath, 'utf-8');

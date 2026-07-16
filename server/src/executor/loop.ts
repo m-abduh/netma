@@ -42,6 +42,7 @@ export async function runLoop(
       if (msg.content) {
         console.log(`[Executor] ${msg.content}`);
       }
+      messages.push(msg);
       break;
     }
 

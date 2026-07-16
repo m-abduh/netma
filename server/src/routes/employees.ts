@@ -2,18 +2,6 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 
 const router = Router();
-const PORT_RANGE_START = 21000;
-const PORT_RANGE_END = 21999;
-
-async function findAvailablePort(prisma: PrismaClient, excludePort?: number): Promise<number> {
-  const used = await prisma.employee.findMany({ select: { port: true } });
-  const usedPorts = new Set(used.map((e) => e.port));
-  if (excludePort) usedPorts.delete(excludePort);
-  for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p++) {
-    if (!usedPorts.has(p)) return p;
-  }
-  throw new Error('No available port');
-}
 
 router.get('/', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
@@ -35,9 +23,8 @@ router.post('/', async (req: Request, res: Response) => {
     const sup = await prisma.employee.findUnique({ where: { id: supervisorId } });
     if (!sup) return res.status(400).json({ error: 'Supervisor not found' });
   }
-  const port = await findAvailablePort(prisma);
   const employee = await prisma.employee.create({
-    data: { name, rank, jobDesc, model, port, supervisorId: supervisorId || null },
+    data: { name, rank, jobDesc, model, supervisorId: supervisorId || null },
   });
   await prisma.auditLog.create({
     data: { actor: 'Bos', action: 'CRUD', target: employee.id, detail: `Tambah karyawan ${name}` },

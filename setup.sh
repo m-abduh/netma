@@ -21,19 +21,9 @@ echo "  Node.js: $(node -v)"
 echo "  npm:     $(npm -v)"
 echo "  PM2:     $(pm2 -v 2>/dev/null || echo 'installed')"
 
-# --- OpenCode CLI ---
-echo ""
-echo "[2/6] Checking opencode CLI..."
-if command -v opencode >/dev/null 2>&1; then
-  echo "  opencode: $(opencode --version 2>/dev/null || echo 'installed')"
-else
-  echo "  Installing opencode globally..."
-  npm install -g opencode
-fi
-
 # --- Environment ---
 echo ""
-echo "[3/6] Setting up environment..."
+echo "[2/6] Setting up environment..."
 ENV_FILE="$APP_DIR/server/.env"
 ENV_EXAMPLE="$APP_DIR/server/.env.example"
 
@@ -46,7 +36,6 @@ if [ ! -f "$ENV_FILE" ]; then
     cat > "$ENV_FILE" <<-EOF
 PORT=3001
 NODE_ENV=production
-OPENCODE_SERVER_PASSWORD=$local_pass
 AUTH_USERNAME=change-me
 AUTH_PASSWORD=change-me
 EOF
@@ -73,7 +62,7 @@ set -a; source "$ENV_FILE"; set +a
 
 # --- Install dependencies ---
 echo ""
-echo "[4/6] Installing dependencies..."
+echo "[3/6] Installing dependencies..."
 echo "  Server..."
 cd "$APP_DIR/server"
 npm install --include=dev 2>&1 | sed 's/^/    /'
@@ -86,7 +75,7 @@ npm install --include=dev 2>&1 | sed 's/^/    /'
 
 # --- Build ---
 echo ""
-echo "[5/6] Building..."
+echo "[4/6] Building..."
 echo "  Server (TypeScript)..."
 cd "$APP_DIR/server"
 echo "    Compiling..."
@@ -111,7 +100,7 @@ mkdir -p "$APP_DIR/logs"
 
 # --- Start with PM2 ---
 echo ""
-echo "[6/6] Starting with PM2..."
+echo "[5/6] Starting with PM2..."
 cd "$APP_DIR"
 pm2 delete netma-server netma-client 2>/dev/null || true
 pm2 start ecosystem.config.js

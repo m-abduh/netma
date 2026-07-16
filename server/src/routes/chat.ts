@@ -29,9 +29,15 @@ router.post('/:id', async (req: Request, res: Response) => {
 
   try {
     const empWithHierarchy = await enrichEmployee(prisma, employee);
+    const recentChats = await prisma.chat.findMany({
+      where: { employeeId: employee.id },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
+    });
+    const history = recentChats.map(c => ({ role: c.role, content: c.content }));
 
     req.setTimeout(180000);
-    const reply = await chatWithEmployee(empWithHierarchy, prompt, mode || 'plan');
+    const reply = await chatWithEmployee(empWithHierarchy, prompt, mode || 'plan', history);
 
     await prisma.chat.create({
       data: { employeeId: employee.id, role: 'assistant', content: reply },
@@ -71,7 +77,14 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
 
   try {
     const empWithHierarchy = await enrichEmployee(prisma, employee);
-    const reply = await chatWithEmployee(empWithHierarchy, prompt, mode || 'plan');
+    const recentChats = await prisma.chat.findMany({
+      where: { employeeId: employee.id },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
+    });
+    const history = recentChats.map(c => ({ role: c.role, content: c.content }));
+
+    const reply = await chatWithEmployee(empWithHierarchy, prompt, mode || 'plan', history);
 
     await prisma.chat.create({
       data: { employeeId: employee.id, role: 'assistant', content: reply },
@@ -117,7 +130,12 @@ router.post('/:id/broadcast-to-subordinates', async (req: Request, res: Response
     (async () => {
       try {
         const enrichedSub = await enrichEmployee(prisma, sub);
-        const reply = await chatWithEmployee(enrichedSub, msg);
+        const subHistory = await prisma.chat.findMany({
+          where: { employeeId: sub.id },
+          orderBy: { createdAt: 'asc' },
+          take: 20,
+        });
+        const reply = await chatWithEmployee(enrichedSub, msg, 'plan', subHistory.map(c => ({ role: c.role, content: c.content })));
         await prisma.chat.create({ data: { employeeId: sub.id, role: 'assistant', content: reply } });
       } catch (err: any) {
         console.error(`Broadcast reply failed for ${sub.name}: ${err.message}`);

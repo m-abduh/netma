@@ -21,7 +21,7 @@ export default function SettingsPage() {
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
   const { data: dirInfo } = useQuery({ queryKey: ['project-dir'], queryFn: api.projectDir.info });
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', supervisorId: '' });
+  const [form, setForm] = useState({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [projectDir, setProjectDir] = useState('');
   const [savingDir, setSavingDir] = useState(false);
@@ -49,7 +49,7 @@ export default function SettingsPage() {
     if (!form.name || !form.jobDesc) return;
     await api.employees.create({ ...form, supervisorId: form.supervisorId || undefined });
     queryClient.invalidateQueries({ queryKey: ['employees'] });
-    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', supervisorId: '' });
+    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '' });
     setShowAdd(false);
     toast.success('Karyawan ditambahkan');
   };
@@ -57,7 +57,7 @@ export default function SettingsPage() {
   const updateEmployee = async (id: string) => {
     await api.employees.update(id, { ...form, supervisorId: form.supervisorId || null });
     queryClient.invalidateQueries({ queryKey: ['employees'] });
-    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', supervisorId: '' });
+    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '' });
     setEditingId(null);
     toast.success('Karyawan diupdate');
   };
@@ -84,11 +84,11 @@ export default function SettingsPage() {
   };
 
   const models = [
-    'opencode/big-pickle',
-    'opencode/deepseek-v4-flash-free',
-    'opencode/nemotron-3-ultra-free',
-    'opencode/north-mini-code-free',
-    'opencode/mimo-v2.5-free',
+    'llama-3.3-70b-versatile',
+    'llama3-70b-8192',
+    'llama3-8b-8192',
+    'mixtral-8x7b-32768',
+    'gemma2-9b-it',
   ];
 
   return (
@@ -98,7 +98,7 @@ export default function SettingsPage() {
         <Dialog open={showAdd} onOpenChange={(o) => { if (!o) { setShowAdd(false); setEditingId(null); } setShowAdd(o); }}>
           <DialogTrigger
             render={
-              <Button onClick={() => { setEditingId(null); setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'opencode/big-pickle', supervisorId: '' }); }}>
+              <Button onClick={() => { setEditingId(null); setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '' }); }}>
                 + Karyawan
               </Button>
             }
@@ -165,7 +165,6 @@ export default function SettingsPage() {
               <TableHead>Jabatan</TableHead>
               <TableHead>Atasan</TableHead>
               <TableHead>Model</TableHead>
-              <TableHead>Port</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Aksi</TableHead>
             </TableRow>
@@ -177,7 +176,6 @@ export default function SettingsPage() {
                 <TableCell className="text-muted-foreground">{emp.rank}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{employees?.find((e: Employee) => e.id === emp.supervisorId)?.name || '-'}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{emp.model}</TableCell>
-                <TableCell className="text-muted-foreground">{emp.port}</TableCell>
                 <TableCell>
                   <Badge variant={emp.status === 'online' ? 'default' : 'destructive'}>{emp.status}</Badge>
                 </TableCell>
