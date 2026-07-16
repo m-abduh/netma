@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { getProcessManager } from '../services/processManager';
 
 const router = Router();
 const PORT_RANGE_START = 21000;
@@ -89,11 +88,6 @@ router.post('/:id/turn-on', async (req: Request, res: Response) => {
   if (!employee) return res.status(404).json({ error: 'Not found' });
 
   try {
-    const pm = getProcessManager();
-    if (!pm.isRunning(employee.port)) {
-      await pm.start(employee);
-    }
-
     const updated = await prisma.employee.update({
       where: { id: employee.id },
       data: { status: 'online' },
@@ -103,7 +97,7 @@ router.post('/:id/turn-on', async (req: Request, res: Response) => {
     });
     res.json(updated);
   } catch (err: any) {
-    res.status(500).json({ error: `Failed to start: ${err.message}` });
+    res.status(500).json({ error: `Failed to turn on: ${err.message}` });
   }
 });
 
@@ -113,9 +107,6 @@ router.post('/:id/turn-off', async (req: Request, res: Response) => {
   if (!employee) return res.status(404).json({ error: 'Not found' });
 
   try {
-    const pm = getProcessManager();
-    pm.stop(employee.port);
-
     const updated = await prisma.employee.update({
       where: { id: employee.id },
       data: { status: 'offline' },
@@ -125,7 +116,7 @@ router.post('/:id/turn-off', async (req: Request, res: Response) => {
     });
     res.json(updated);
   } catch (err: any) {
-    res.status(500).json({ error: `Failed to stop: ${err.message}` });
+    res.status(500).json({ error: `Failed to turn off: ${err.message}` });
   }
 });
 

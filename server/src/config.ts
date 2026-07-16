@@ -1,8 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 
-export const OPENCODE_PASSWORD = process.env.OPENCODE_SERVER_PASSWORD || 'netma-secret';
-
 const CONFIG_PATH = path.join(__dirname, '../project-dir.json');
 
 export function getProjectDir(): string {

@@ -1,10 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs/promises';
-import fsSync from 'fs';
+import { writeFileSync } from 'fs';
 import os from 'os';
 import path from 'path';
-import { execSync } from 'child_process';
 import { PrismaClient } from '@prisma/client';
 import { employeesRouter } from './routes/employees';
 import { chatRouter } from './routes/chat';
@@ -16,7 +15,6 @@ import { notesRouter } from './routes/notes';
 import { authRouter } from './routes/auth';
 import { initScheduler } from './services/scheduler';
 import { getProjectDir } from './config';
-import { getProcessManager } from './services/processManager';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -76,7 +74,7 @@ app.put('/api/project-dir', (req, res) => {
   if (!newPath) return res.status(400).json({ error: 'path required' });
   const configPath = path.join(__dirname, '../project-dir.json');
   try {
-    fsSync.writeFileSync(configPath, JSON.stringify({ path: newPath }, null, 2));
+    writeFileSync(configPath, JSON.stringify({ path: newPath }, null, 2));
     res.json({ path: getProjectDir() });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -132,27 +130,8 @@ async function start() {
 
   await prisma.employee.updateMany({ where: { status: 'online' }, data: { status: 'offline' } });
 
-  try {
-    execSync('pkill -f "opencode serve" 2>/dev/null; for p in $(seq 21000 21999); do fuser -k $p/tcp 2>/dev/null; done', { stdio: 'ignore' });
-  } catch {}
-
-  app.listen(PORT, async () => {
+  app.listen(PORT, () => {
     console.log(`Netma server running on http://localhost:${PORT}`);
-
-    const employees = await prisma.employee.findMany();
-    const pm = getProcessManager();
-    const results = await Promise.allSettled(
-      employees.filter(e => e.port).map(async (emp) => {
-        await pm.start(emp as any);
-        await prisma.employee.update({ where: { id: emp.id }, data: { status: 'online' } });
-      })
-    );
-    const started = results.filter(r => r.status === 'fulfilled').length;
-    results.forEach((r, i) => {
-      if (r.status === 'rejected') console.error(`  ${employees[i].name}: ${r.reason.message}`);
-    });
-    console.log(`Auto-started ${started}/${employees.length} karyawan`);
-
     initScheduler(prisma);
   });
 }

@@ -1,7 +1,7 @@
 import { spawn, execSync, ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
-import { OPENCODE_PASSWORD, getProjectDir } from '../config';
+import { getProjectDir } from '../config';
 
 interface ProcessEntry {
   process: ChildProcess;
@@ -10,12 +10,6 @@ interface ProcessEntry {
 
 class ProcessManager {
   private processes: Map<number, ProcessEntry> = new Map();
-
-  private buildSystemPrompt(employee: { name: string; rank: string; jobDesc: string }): string {
-    return `Kamu adalah ${employee.name}, seorang ${employee.rank}.
-Deskripsi pekerjaan: ${employee.jobDesc}
-Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
-  }
 
   async start(employee: { id: string; name: string; rank: string; jobDesc: string; model: string; port: number }): Promise<{ pid: number }> {
     try {
@@ -29,7 +23,7 @@ Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
     const configPath = path.join(configDir, 'config.json');
     const config = {
       model: employee.model,
-      systemPrompt: this.buildSystemPrompt(employee),
+      systemPrompt: `Kamu adalah ${employee.name}, seorang ${employee.rank}. Deskripsi pekerjaan: ${employee.jobDesc}`,
       port: employee.port,
       hostname: '127.0.0.1',
     };
@@ -41,7 +35,6 @@ Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
       env: {
         ...process.env,
         OPENCODE_CONFIG_DIR: configDir,
-        OPENCODE_SERVER_PASSWORD: OPENCODE_PASSWORD,
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -87,16 +80,12 @@ Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
   stop(port: number): void {
     const entry = this.processes.get(port);
     if (!entry) return;
-
     try {
       entry.process.kill('SIGTERM');
       setTimeout(() => {
-        try {
-          entry.process.kill('SIGKILL');
-        } catch {}
+        try { entry.process.kill('SIGKILL'); } catch {}
       }, 5000);
     } catch {}
-
     this.processes.delete(port);
   }
 
@@ -109,9 +98,7 @@ Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
   getPids(): Record<number, number> {
     const result: Record<number, number> = {};
     for (const [port, entry] of this.processes) {
-      if (entry.process.pid) {
-        result[port] = entry.process.pid;
-      }
+      if (entry.process.pid) result[port] = entry.process.pid;
     }
     return result;
   }
@@ -120,8 +107,6 @@ Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
 let instance: ProcessManager;
 
 export function getProcessManager(): ProcessManager {
-  if (!instance) {
-    instance = new ProcessManager();
-  }
+  if (!instance) instance = new ProcessManager();
   return instance;
 }

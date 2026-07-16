@@ -1,18 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { chatWithEmployee, createSessionAsync, pollMessageParts, streamMessageParts, deleteSession } from '../services/opencode';
-import { getProcessManager } from '../services/processManager';
+import { chatWithEmployee } from '../services/opencode';
 
 const router = Router();
-
-async function ensureOnline(prisma: PrismaClient, employee: { id: string; port: number; status: string }) {
-  if (employee.status === 'online') return;
-  const pm = getProcessManager();
-  if (!pm.isRunning(employee.port)) {
-    await pm.start(employee as any);
-  }
-  await prisma.employee.update({ where: { id: employee.id }, data: { status: 'online' } });
-}
 
 async function enrichEmployee(prisma: PrismaClient, emp: any) {
   const supervisor = emp.supervisorId ? await prisma.employee.findUnique({ where: { id: emp.supervisorId } }) : null;
@@ -29,11 +19,6 @@ router.post('/:id', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
   const employee = await prisma.employee.findUnique({ where: { id: req.params.id } });
   if (!employee) return res.status(404).json({ error: 'Employee not found' });
-  try {
-    await ensureOnline(prisma, employee);
-  } catch (err: any) {
-    return res.status(500).json({ error: `Failed to turn on: ${err.message}` });
-  }
 
   const { prompt, mode } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
@@ -43,8 +28,6 @@ router.post('/:id', async (req: Request, res: Response) => {
   });
 
   try {
-    if (!employee.port) throw new Error('Employee has no port assigned');
-
     const empWithHierarchy = await enrichEmployee(prisma, employee);
 
     req.setTimeout(180000);
@@ -56,7 +39,7 @@ router.post('/:id', async (req: Request, res: Response) => {
 
     res.json({ role: 'assistant', content: reply });
   } catch (err: any) {
-    res.status(502).json({ error: `Failed to reach opencode: ${err.message}` });
+    res.status(502).json({ error: `Failed to chat: ${err.message}` });
   }
 });
 
@@ -76,14 +59,6 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
     return;
   }
 
-  try {
-    await ensureOnline(prisma, employee);
-  } catch (err: any) {
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: `Failed to turn on: ${err.message}` }));
-    return;
-  }
-
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -94,47 +69,24 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
     data: { employeeId: employee.id, role: 'user', content: prompt },
   });
 
-  let sessionId: string | null = null;
-
   try {
-    if (!employee.port) throw new Error('Employee has no port assigned');
     const empWithHierarchy = await enrichEmployee(prisma, employee);
-    sessionId = await createSessionAsync(empWithHierarchy, prompt, mode || 'plan');
+    const reply = await chatWithEmployee(empWithHierarchy, prompt, mode || 'plan');
 
-    let fullText = '';
-    let fullReasoning = '';
+    await prisma.chat.create({
+      data: { employeeId: employee.id, role: 'assistant', content: reply },
+    });
 
-    for await (const delta of streamMessageParts(employee.port, sessionId)) {
-      if (delta.text) {
-        fullText += delta.text;
-        res.write(`data: ${JSON.stringify({ type: 'delta', text: delta.text, reasoning: '' })}\n\n`);
-      }
-      if (delta.reasoning) {
-        fullReasoning += delta.reasoning;
-        res.write(`data: ${JSON.stringify({ type: 'delta', text: '', reasoning: delta.reasoning })}\n\n`);
-      }
-      if (delta.isComplete) {
-        break;
-      }
+    if (reply) {
+      res.write(`data: ${JSON.stringify({ type: 'delta', text: reply })}\n\n`);
     }
-
-    if (fullText) {
-      await prisma.chat.create({
-        data: { employeeId: employee.id, role: 'assistant', content: fullText },
-      });
-    }
-
-    res.write(`data: ${JSON.stringify({ type: 'done', text: fullText, reasoning: fullReasoning })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done', text: reply })}\n\n`);
     res.end();
   } catch (err: any) {
     try {
       res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`);
     } catch {}
     try { res.end(); } catch {}
-  } finally {
-    if (sessionId && employee.port) {
-      deleteSession(employee.port, sessionId);
-    }
   }
 });
 
@@ -150,8 +102,6 @@ router.post('/:id/broadcast-to-subordinates', async (req: Request, res: Response
   if (subordinates.length === 0) return res.json({ results: [] });
 
   const msg = `📢 **Broadcast dari ${employee.name}**\n\n**Instruksi Bos:** ${prompt}\n\n**Rencana ${employee.name}:**${response ? '\n' + response : ''}\n\n*Tugasmu: buatlah rencana detail untuk bagianmu.*`;
-
-  await Promise.all(subordinates.map((sub) => ensureOnline(prisma, sub).catch(() => {})));
 
   await Promise.all(subordinates.map((sub) =>
     prisma.chat.create({ data: { employeeId: sub.id, role: 'user', content: msg } })
