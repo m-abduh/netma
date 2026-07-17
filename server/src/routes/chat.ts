@@ -37,7 +37,7 @@ router.post('/:id', async (req: Request, res: Response) => {
     const history = recentChats.map(c => ({ role: c.role, content: c.content }));
 
     req.setTimeout(180000);
-    const reply = await chatWithEmployee(empWithHierarchy, prompt, mode || 'plan', history);
+    const reply = await chatWithEmployee(empWithHierarchy, prompt, mode, history);
 
     await prisma.chat.create({
       data: { employeeId: employee.id, role: 'assistant', content: reply },
@@ -84,7 +84,7 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
     });
     const history = recentChats.map(c => ({ role: c.role, content: c.content }));
 
-    const reply = await chatWithEmployee(empWithHierarchy, prompt, mode || 'plan', history);
+    const reply = await chatWithEmployee(empWithHierarchy, prompt, mode, history);
 
     await prisma.chat.create({
       data: { employeeId: employee.id, role: 'assistant', content: reply },
@@ -135,7 +135,7 @@ router.post('/:id/broadcast-to-subordinates', async (req: Request, res: Response
           orderBy: { createdAt: 'asc' },
           take: 20,
         });
-        const reply = await chatWithEmployee(enrichedSub, msg, 'plan', subHistory.map(c => ({ role: c.role, content: c.content })));
+        const reply = await chatWithEmployee(enrichedSub, msg, undefined, subHistory.map(c => ({ role: c.role, content: c.content })));
         await prisma.chat.create({ data: { employeeId: sub.id, role: 'assistant', content: reply } });
       } catch (err: any) {
         console.error(`Broadcast reply failed for ${sub.name}: ${err.message}`);
