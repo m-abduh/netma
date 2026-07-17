@@ -238,41 +238,36 @@ const EmployeeList = memo(function EmployeeList({
 });
 
 export default function ChatPage() {
-  const { activeChat, setActiveChat, chatModes, setChatMode } = useStore();
-  const mode = activeChat ? (chatModes[activeChat] || activeEmployee?.mode || 'plan') : 'plan';
+  const { activeChat, setActiveChat } = useStore();
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [optimisticMsgs, setOptimisticMsgs] = useState<any[]>([]);
   const streamAccumRef = useRef({ text: '', reasoning: '' });
   const streamAbortRef = useRef<AbortController | null>(null);
-  const queryClient = useQueryClient();
 
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
+  const activeEmployee = employees?.find((e: Employee) => e.id === activeChat);
+  const mode = activeEmployee?.mode || 'plan';
   const { data: chats, refetch: refetchChats } = useQuery({
     queryKey: ['chats', activeChat],
     queryFn: () => api.chat.history(activeChat!),
     enabled: !!activeChat,
   });
-  const activeEmployee = employees?.find((e: Employee) => e.id === activeChat);
   const subordinates = employees?.filter((e: Employee) => e.supervisorId === activeChat) || [];
   const employeeList = employees?.filter((e: Employee) => e.name !== 'Bos') || [];
+
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setOptimisticMsgs([]);
   }, [activeChat]);
 
-  useEffect(() => {
-    if (activeChat && activeEmployee?.mode && !chatModes[activeChat]) {
-      setChatMode(activeChat, activeEmployee.mode as 'plan' | 'build');
-    }
-  }, [activeChat, activeEmployee?.mode, chatModes, setChatMode]);
-
   const handleModeChange = useCallback((m: 'plan' | 'build') => {
-    if (!activeChat) return;
-    setChatMode(activeChat, m);
-    api.employees.update(activeChat, { mode: m }).catch(() => {});
-  }, [activeChat, setChatMode]);
+    api.employees.update(activeChat!, { mode: m }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+    }).catch(() => {});
+  }, [activeChat, queryClient]);
 
   const displayChats = optimisticMsgs.length > 0
     ? [...optimisticMsgs, ...(chats?.filter((c: any) => !optimisticMsgs.some((o) => o.content === c.content && o.role === c.role)) || [])]
