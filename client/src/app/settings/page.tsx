@@ -58,6 +58,7 @@ export default function SettingsPage() {
     queryClient.invalidateQueries({ queryKey: ['employees'] });
     setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '' });
     setEditingId(null);
+    setShowAdd(false);
     toast.success('Karyawan diupdate');
   };
 
@@ -71,15 +72,19 @@ export default function SettingsPage() {
   const startEdit = (emp: Employee) => {
     setForm({ name: emp.name, rank: emp.rank, jobDesc: emp.jobDesc, model: emp.model, supervisorId: emp.supervisorId || '' });
     setEditingId(emp.id);
-    setShowAdd(false);
+    setShowAdd(true);
   };
 
   const models = [
     'llama-3.3-70b-versatile',
-    'llama3-70b-8192',
-    'llama3-8b-8192',
-    'mixtral-8x7b-32768',
-    'gemma2-9b-it',
+    'llama-3.1-8b-instant',
+    'openai/gpt-oss-120b',
+    'openai/gpt-oss-20b',
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'qwen/qwen3-32b',
+    'qwen/qwen3.6-27b',
+    'groq/compound',
+    'groq/compound-mini',
   ];
 
   return (
@@ -156,7 +161,6 @@ export default function SettingsPage() {
               <TableHead>Jabatan</TableHead>
               <TableHead>Atasan</TableHead>
               <TableHead>Model</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead>Aksi</TableHead>
             </TableRow>
           </TableHeader>

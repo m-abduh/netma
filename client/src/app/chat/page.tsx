@@ -238,8 +238,8 @@ const EmployeeList = memo(function EmployeeList({
 });
 
 export default function ChatPage() {
-  const { activeChat, setActiveChat } = useStore();
-  const [mode, setMode] = useState<'plan' | 'build'>('plan');
+  const { activeChat, setActiveChat, chatModes, setChatMode } = useStore();
+  const mode = activeChat ? (chatModes[activeChat] || 'plan') : 'plan';
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -426,7 +426,7 @@ export default function ChatPage() {
             <ChatInput
               isStreaming={isStreaming}
               mode={mode}
-              onModeChange={setMode}
+              onModeChange={(m) => activeChat && setChatMode(activeChat, m)}
               onSend={sendMessage}
               onStop={handleStop}
             />

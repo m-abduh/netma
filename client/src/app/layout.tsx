@@ -2,7 +2,7 @@
 
 import './globals.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import Sidebar from '@/components/Sidebar';
@@ -46,8 +46,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     defaultOptions: { queries: { refetchOnWindowFocus: false } },
   }));
 
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
   return (
     <html lang="id">
+      <head>
+        <link rel="manifest" href="/manifest" />
+        <meta name="theme-color" content="#2563eb" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
+      </head>
       <body>
         <TooltipProvider>
           <QueryClientProvider client={queryClient}>

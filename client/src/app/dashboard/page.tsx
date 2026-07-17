@@ -23,7 +23,6 @@ import { useStore } from '@/store';
 import type { Employee } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 
 const rankColors: Record<string, string> = {
   Boss: '#9333ea',
@@ -68,7 +67,6 @@ function EmployeeNode({ data }: { data: any }) {
       <Handle type="target" position={Position.Top} isConnectable={true} className="!border-border !bg-background !w-3 !h-3" />
       <div className="text-lg font-bold">{data.label}</div>
       <div className="text-xs text-muted-foreground">{data.rank}</div>
-      <div className={cn('mt-2 mx-auto w-2.5 h-2.5 rounded-full', data.online ? 'bg-green-400' : 'bg-red-400')} />
       {data.lastChat && (
         <div className="mt-2 text-[10px] text-muted-foreground leading-tight line-clamp-3 max-w-[160px] mx-auto">
           {stripMarkdown(data.lastChat)}
@@ -115,7 +113,6 @@ export default function DashboardPage() {
         label: emp.name,
         rank: emp.rank,
         color: getRankColor(emp.rank),
-        online: emp.status === 'online',
         employeeId: emp.id,
         lastChat: recentChats?.[emp.id]?.content ? stripMarkdown(recentChats[emp.id].content) : null,
       },
