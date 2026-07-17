@@ -4,6 +4,19 @@ import { getProjectDir } from '../config';
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 
+interface EmployeeInfo {
+  id: string;
+  name: string;
+  rank: string;
+  jobDesc: string;
+  model: string;
+  mode?: string;
+  port?: number;
+  supervisorName?: string;
+  supervisorRank?: string;
+  subordinates?: { name: string; rank: string }[];
+}
+
 function buildConfig(model: string) {
   return {
     apiKey: process.env.GROQ_API_KEY || '',
@@ -49,22 +62,13 @@ Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
 }
 
 export async function chatWithEmployee(
-  employee: {
-    id: string;
-    name: string;
-    rank: string;
-    jobDesc: string;
-    model: string;
-    port?: number;
-    supervisorName?: string;
-    supervisorRank?: string;
-    subordinates?: { name: string; rank: string }[];
-  },
+  employee: EmployeeInfo,
   prompt: string,
-  mode: 'plan' | 'build' = 'plan',
+  mode?: 'plan' | 'build',
   history?: { role: string; content: string }[]
 ): Promise<string> {
-  const systemPrompt = buildSystemPrompt(employee, mode);
+  const activeMode = mode || (employee.mode as 'plan' | 'build') || 'plan';
+  const systemPrompt = buildSystemPrompt(employee, activeMode);
   const config = buildConfig(employee.model);
 
   const messages: any[] = [

@@ -34,7 +34,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.put('/:id', async (req: Request, res: Response) => {
   const prisma: PrismaClient = (req as any).prisma;
-  const { name, rank, jobDesc, model, positionX, positionY, supervisorId } = req.body;
+  const { name, rank, jobDesc, model, mode, positionX, positionY, supervisorId } = req.body;
   if (supervisorId === req.params.id) return res.status(400).json({ error: 'Cannot be own supervisor' });
   if (supervisorId) {
     const sup = await prisma.employee.findUnique({ where: { id: supervisorId } });
@@ -45,6 +45,7 @@ router.put('/:id', async (req: Request, res: Response) => {
   if (rank !== undefined) data.rank = rank;
   if (jobDesc !== undefined) data.jobDesc = jobDesc;
   if (model !== undefined) data.model = model;
+  if (mode !== undefined) data.mode = mode;
   if (positionX !== undefined) data.positionX = positionX;
   if (positionY !== undefined) data.positionY = positionY;
   if (supervisorId !== undefined) data.supervisorId = supervisorId || null;

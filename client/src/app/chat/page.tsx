@@ -239,7 +239,7 @@ const EmployeeList = memo(function EmployeeList({
 
 export default function ChatPage() {
   const { activeChat, setActiveChat, chatModes, setChatMode } = useStore();
-  const mode = activeChat ? (chatModes[activeChat] || 'plan') : 'plan';
+  const mode = activeChat ? (chatModes[activeChat] || activeEmployee?.mode || 'plan') : 'plan';
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -261,6 +261,18 @@ export default function ChatPage() {
   useEffect(() => {
     setOptimisticMsgs([]);
   }, [activeChat]);
+
+  useEffect(() => {
+    if (activeChat && activeEmployee?.mode && !chatModes[activeChat]) {
+      setChatMode(activeChat, activeEmployee.mode as 'plan' | 'build');
+    }
+  }, [activeChat, activeEmployee?.mode, chatModes, setChatMode]);
+
+  const handleModeChange = useCallback((m: 'plan' | 'build') => {
+    if (!activeChat) return;
+    setChatMode(activeChat, m);
+    api.employees.update(activeChat, { mode: m }).catch(() => {});
+  }, [activeChat, setChatMode]);
 
   const displayChats = optimisticMsgs.length > 0
     ? [...optimisticMsgs, ...(chats?.filter((c: any) => !optimisticMsgs.some((o) => o.content === c.content && o.role === c.role)) || [])]
@@ -426,7 +438,7 @@ export default function ChatPage() {
             <ChatInput
               isStreaming={isStreaming}
               mode={mode}
-              onModeChange={(m) => activeChat && setChatMode(activeChat, m)}
+              onModeChange={handleModeChange}
               onSend={sendMessage}
               onStop={handleStop}
             />
