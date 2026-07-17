@@ -68,6 +68,7 @@ cd "$APP_DIR/server"
 npm install --include=dev 2>&1 | sed 's/^/    /'
 npx prisma generate 2>&1 | sed 's/^/    /'
 npx prisma db push --accept-data-loss 2>&1 | sed 's/^/    /'
+npx tsx prisma/seed.ts 2>&1 | sed 's/^/    /'
 
 echo "  Client..."
 cd "$APP_DIR/client"
