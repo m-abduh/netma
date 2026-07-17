@@ -20,8 +20,9 @@ export default function SettingsPage() {
   const { data: employees } = useQuery({ queryKey: ['employees'], queryFn: api.employees.list });
   const { data: dirInfo } = useQuery({ queryKey: ['project-dir'], queryFn: api.projectDir.info });
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '' });
+  const [form, setForm] = useState({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '', mode: 'plan' });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [togglingMode, setTogglingMode] = useState<string | null>(null);
   const [projectDir, setProjectDir] = useState('');
   const [savingDir, setSavingDir] = useState(false);
   const [showBrowser, setShowBrowser] = useState(false);
@@ -46,17 +47,17 @@ export default function SettingsPage() {
 
   const addEmployee = async () => {
     if (!form.name || !form.jobDesc) return;
-    await api.employees.create({ ...form, supervisorId: form.supervisorId || undefined });
+    await api.employees.create({ ...form, supervisorId: form.supervisorId || undefined, mode: form.mode });
     queryClient.invalidateQueries({ queryKey: ['employees'] });
-    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '' });
+    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '', mode: 'plan' });
     setShowAdd(false);
     toast.success('Karyawan ditambahkan');
   };
 
   const updateEmployee = async (id: string) => {
-    await api.employees.update(id, { ...form, supervisorId: form.supervisorId || null });
+    await api.employees.update(id, { ...form, supervisorId: form.supervisorId || null, mode: form.mode });
     queryClient.invalidateQueries({ queryKey: ['employees'] });
-    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '' });
+    setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '', mode: 'plan' });
     setEditingId(null);
     setShowAdd(false);
     toast.success('Karyawan diupdate');
@@ -70,9 +71,23 @@ export default function SettingsPage() {
   };
 
   const startEdit = (emp: Employee) => {
-    setForm({ name: emp.name, rank: emp.rank, jobDesc: emp.jobDesc, model: emp.model, supervisorId: emp.supervisorId || '' });
+    setForm({ name: emp.name, rank: emp.rank, jobDesc: emp.jobDesc, model: emp.model, supervisorId: emp.supervisorId || '', mode: emp.mode || 'plan' });
     setEditingId(emp.id);
     setShowAdd(true);
+  };
+
+  const toggleMode = async (emp: Employee) => {
+    setTogglingMode(emp.id);
+    const newMode = emp.mode === 'build' ? 'plan' : 'build';
+    try {
+      await api.employees.update(emp.id, { mode: newMode });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success(`${emp.name} → mode ${newMode}`);
+    } catch (err: any) {
+      toast.error('Gagal ganti mode: ' + err.message);
+    } finally {
+      setTogglingMode(null);
+    }
   };
 
   const models = [
@@ -94,7 +109,7 @@ export default function SettingsPage() {
         <Dialog open={showAdd} onOpenChange={(o) => { if (!o) { setShowAdd(false); setEditingId(null); } setShowAdd(o); }}>
           <DialogTrigger
             render={
-              <Button onClick={() => { setEditingId(null); setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '' }); }}>
+              <Button onClick={() => { setEditingId(null); setForm({ name: '', rank: 'Junior', jobDesc: '', model: 'llama-3.3-70b-versatile', supervisorId: '', mode: 'plan' }); }}>
                 + Karyawan
               </Button>
             }
@@ -129,6 +144,33 @@ export default function SettingsPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
+                <Label>Mode</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, mode: 'plan' })}
+                    className={`flex-1 px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
+                      form.mode === 'plan'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-muted-foreground border-border hover:text-foreground'
+                    }`}
+                  >
+                    Plan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, mode: 'build' })}
+                    className={`flex-1 px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
+                      form.mode === 'build'
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-background text-muted-foreground border-border hover:text-foreground'
+                    }`}
+                  >
+                    Build
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
                 <Label>Atasan</Label>
                 <Select value={form.supervisorId} onValueChange={(v) => setForm({ ...form, supervisorId: v ?? '' })}>
                   <SelectTrigger>
@@ -160,6 +202,7 @@ export default function SettingsPage() {
               <TableHead>Nama</TableHead>
               <TableHead>Jabatan</TableHead>
               <TableHead>Atasan</TableHead>
+              <TableHead>Mode</TableHead>
               <TableHead>Model</TableHead>
               <TableHead>Aksi</TableHead>
             </TableRow>
@@ -170,6 +213,19 @@ export default function SettingsPage() {
                 <TableCell className="font-medium">{emp.name}</TableCell>
                 <TableCell className="text-muted-foreground">{emp.rank}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{employees?.find((e: Employee) => e.id === emp.supervisorId)?.name || '-'}</TableCell>
+                <TableCell>
+                  <button
+                    onClick={() => toggleMode(emp)}
+                    disabled={togglingMode === emp.id}
+                    className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
+                      emp.mode === 'build'
+                        ? 'bg-emerald-600/20 text-emerald-600 border-emerald-600/30 hover:bg-emerald-600/30'
+                        : 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/30'
+                    }`}
+                  >
+                    {togglingMode === emp.id ? '...' : emp.mode === 'build' ? 'Build' : 'Plan'}
+                  </button>
+                </TableCell>
                 <TableCell className="text-xs text-muted-foreground">{emp.model}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
