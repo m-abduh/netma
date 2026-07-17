@@ -52,6 +52,7 @@ async function main() {
         name: emp.name,
         rank: emp.rank,
         jobDesc: emp.jobDesc,
+        model: emp.model,
         mode: emp.mode,
         positionX: emp.x,
         positionY: emp.y,
