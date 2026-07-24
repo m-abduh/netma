@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import type { Employee } from '@/lib/types';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -333,18 +334,20 @@ export default function ChatPage() {
                 setStreamingReasoning(streamAccumRef.current.reasoning);
               }
             } else if (data.type === 'error') {
-              alert('Gagal: ' + data.message);
+              toast.error('Gagal', { description: data.message });
             }
           } catch {}
         }
       }
 
       if (!hasContent && !streamAccumRef.current.text) {
-        throw new Error('Tidak ada respons dari AI');
+        throw new Error(`${activeEmployee?.name || 'AI'} tidak memberikan respons. Coba ulangi dengan instruksi yang lebih jelas.`);
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
-        alert(err.message || 'Gagal mendapatkan respons');
+        toast.error('Gagal mendapatkan respons', {
+          description: err.message || 'Terjadi kesalahan saat menghubungi AI. Coba lagi nanti.',
+        });
       }
     } finally {
       setIsStreaming(false);
@@ -384,17 +387,17 @@ export default function ChatPage() {
 
   const handleBroadcast = useCallback((prompt: string, response: string) => {
     if (!activeChat) return;
-    if (!prompt) { alert('Tidak ada prompt untuk disebarkan'); return; }
+    if (!prompt) { toast.error('Tidak ada prompt untuk disebarkan'); return; }
     api.chat.broadcastToSubordinates(activeChat, prompt, response).then((res: any) => {
-      alert(`Broadcast terkirim ke ${res.count} bawahan: ${res.names.join(', ')}`);
-    }).catch((err) => alert('Gagal broadcast: ' + err.message));
+      toast.success('Broadcast terkirim', { description: `Ke ${res.count} bawahan: ${res.names.join(', ')}` });
+    }).catch((err) => toast.error('Gagal broadcast', { description: err.message }));
   }, [activeChat]);
 
   const handleSaveNote = useCallback((chatContent: string) => {
     const title = chatContent.split('\n')[0].slice(0, 80) || 'Catatan';
     api.notes.create({ title, content: chatContent, employeeId: activeChat })
-      .then(() => { alert('Catatan tersimpan'); })
-      .catch((err) => alert('Gagal simpan: ' + err.message));
+      .then(() => { toast.success('Catatan tersimpan'); })
+      .catch((err) => toast.error('Gagal simpan', { description: err.message }));
   }, [activeChat]);
 
   return (
