@@ -41,7 +41,8 @@ function buildSystemPrompt(employee: {
 }, mode: 'plan' | 'build' = 'plan'): string {
   let prompt = `Kamu adalah ${employee.name}, seorang ${employee.rank}.
 Deskripsi pekerjaan: ${employee.jobDesc}
-Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.`;
+Kamu adalah asisten yang membantu Bos mengerjakan tugas-tugas.
+PENTING: Jika suatu perintah gagal dijalankan (misalnya karena network error, command timeout, atau file not found), JANGAN mengulang perintah yang sama lebih dari 2 kali. Coba pendekatan alternatif atau laporkan ke Bos bahwa tugas gagal beserta penyebabnya. Jika sudah 3 kali mencoba dan tetap gagal, akhiri dengan melaporkan kegagalan secara jelas.`;
 
   if (mode === 'plan') {
     prompt += `\nKamu sedang dalam mode PLAN. Kamu HANYA boleh melakukan analisis, riset, perencanaan, dan memberikan penjelasan. DILARANG KERAS menulis kode, membuat file, atau mengeksekusi perintah apapun. Output kamu hanya boleh berupa teks analisis dan rencana, TIDAK BOLEH mengandung kode atau perintah eksekusi.`;

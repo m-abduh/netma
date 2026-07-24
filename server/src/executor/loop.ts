@@ -26,7 +26,7 @@ export async function runLoop(
   const toolDefs = [
     'read_file', 'write_file', 'edit_file', 'run_command',
     'search_files', 'search_content', 'list_dir', 'create_dir',
-    'delete_file', 'get_file_info',
+    'delete_file', 'get_file_info', 'web_search',
   ];
   for (const name of toolDefs) {
     toolMap[name] = (tools as any)[name];
@@ -36,7 +36,20 @@ export async function runLoop(
   messages.push({ role: 'user', content: prompt });
 
   for (let i = 0; i < config.max_iterations; i++) {
-    const msg = await groq.send(messages);
+    let msg: any;
+    try {
+      msg = await groq.send(messages);
+    } catch (e: any) {
+      const errMsg = e.message || '';
+      if (errMsg.includes('tool call validation') || errMsg.includes('tool') && errMsg.includes('not in request')) {
+        messages.push({
+          role: 'user',
+          content: `Tool "${errMsg.match(/'([^']+)'/)?.[1] || 'unknown'}" tidak tersedia. Gunakan hanya tool yang tersedia: ${toolDefs.join(', ')}. Coba lagi.`,
+        });
+        continue;
+      }
+      throw e;
+    }
 
     if (!msg.tool_calls || msg.tool_calls.length === 0) {
       if (msg.content) {
@@ -87,18 +100,20 @@ export async function runLoop(
     }
 
     if (i === config.max_iterations - 1) {
-      const lastMsg = messages[messages.length - 1];
-      if (lastMsg.role !== 'assistant' || !lastMsg.content) {
-        const finalMsg = await groq.send([
-          ...messages,
-          {
-            role: 'user',
-            content: 'Berdasarkan hasil di atas, berikan ringkasan singkat apa yang sudah dilakukan dan hasilnya dalam Bahasa Indonesia.',
-          },
-        ]);
-        if (finalMsg.content) {
-          messages.push(finalMsg);
-        }
+      const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+      if (!lastAssistant || !lastAssistant.content) {
+        try {
+          const finalMsg = await groq.send([
+            ...messages,
+            {
+              role: 'user',
+              content: 'Berdasarkan hasil di atas, berikan ringkasan singkat apa yang sudah dilakukan dan hasilnya dalam Bahasa Indonesia.',
+            },
+          ]);
+          if (finalMsg.content) {
+            messages.push(finalMsg);
+          }
+        } catch {}
       }
     }
   }

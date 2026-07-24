@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
-import { chatWithEmployee } from './opencode';
+import { chatWithEmployee } from './chat-service';
 
 interface ScheduledTask {
   task: cron.ScheduledTask;

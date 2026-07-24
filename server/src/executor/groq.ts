@@ -169,6 +169,20 @@ export function createGroqClient(config: { model: string; temperature: number; a
         },
       },
     },
+    {
+      type: 'function' as const,
+      function: {
+        name: 'web_search',
+        description: 'Search the web for information. Gunakan ini untuk mencari informasi terbaru dari internet.',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Search query' },
+          },
+          required: ['query'],
+        },
+      },
+    },
   ];
 
   async function send(messages: any[]) {

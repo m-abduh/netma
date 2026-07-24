@@ -110,6 +110,26 @@ export function createTools(guardrails: ToolContext, commandTimeout: number) {
       return `Deleted: ${path}`;
     },
 
+    web_search: async ({ query }: { query: string }) => {
+      try {
+        const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
+        const res = await fetch(url);
+        const data = await res.json() as any;
+        const results: string[] = [];
+        if (data.AbstractText) results.push(data.AbstractText);
+        if (data.Results) data.Results.forEach((r: any) => results.push(`${r.Text}\n  ${r.FirstURL}`));
+        if (data.RelatedTopics) {
+          data.RelatedTopics.forEach((t: any) => {
+            if (t.Text) results.push(t.Text);
+            if (t.Topics) t.Topics.forEach((st: any) => results.push(st.Text));
+          });
+        }
+        return results.length > 0 ? results.join('\n\n') : 'Tidak ada hasil pencarian.';
+      } catch (e: any) {
+        return `Gagal mencari: ${e.message}`;
+      }
+    },
+
     get_file_info: async ({ path }: { path: string }) => {
       const fullPath = wrapPath(path);
       if (!existsSync(fullPath)) throw new Error(`File not found: ${path}`);

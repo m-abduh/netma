@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { chatWithEmployee } from '../services/opencode';
+import { chatWithEmployee } from '../services/chat-service';
 
 const router = Router();
 
