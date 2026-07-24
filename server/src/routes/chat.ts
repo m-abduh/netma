@@ -71,6 +71,10 @@ router.post('/:id/stream', async (req: Request, res: Response) => {
     Connection: 'keep-alive',
   });
 
+  req.setTimeout(300000);
+
+  res.write(`data: ${JSON.stringify({ type: 'start' })}\n\n`);
+
   await prisma.chat.create({
     data: { employeeId: employee.id, role: 'user', content: prompt },
   });

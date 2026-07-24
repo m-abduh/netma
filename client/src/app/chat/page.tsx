@@ -276,7 +276,7 @@ export default function ChatPage() {
   const sendMessage = useCallback(async (msg: string) => {
     if (!msg.trim() || !activeChat) return;
     setIsStreaming(true);
-    setStreamingContent('');
+    setStreamingContent('Sedang memproses...');
     setStreamingReasoning('');
     streamAccumRef.current = { text: '', reasoning: '' };
     streamAbortRef.current = new AbortController();
@@ -308,6 +308,7 @@ export default function ChatPage() {
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let hasContent = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -319,7 +320,10 @@ export default function ChatPage() {
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
-            if (data.type === 'delta') {
+            if (data.type === 'start') {
+              setStreamingContent('');
+            } else if (data.type === 'delta') {
+              hasContent = true;
               if (data.text) {
                 streamAccumRef.current.text += data.text;
                 setStreamingContent(streamAccumRef.current.text);
@@ -329,13 +333,19 @@ export default function ChatPage() {
                 setStreamingReasoning(streamAccumRef.current.reasoning);
               }
             } else if (data.type === 'error') {
-              alert(data.message);
+              alert('Gagal: ' + data.message);
             }
           } catch {}
         }
       }
+
+      if (!hasContent && !streamAccumRef.current.text) {
+        throw new Error('Tidak ada respons dari AI');
+      }
     } catch (err: any) {
-      if (err.name !== 'AbortError') alert(err.message);
+      if (err.name !== 'AbortError') {
+        alert(err.message || 'Gagal mendapatkan respons');
+      }
     } finally {
       setIsStreaming(false);
       const { text } = streamAccumRef.current;

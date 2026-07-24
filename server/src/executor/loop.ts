@@ -85,6 +85,22 @@ export async function runLoop(
         });
       }
     }
+
+    if (i === config.max_iterations - 1) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.role !== 'assistant' || !lastMsg.content) {
+        const finalMsg = await groq.send([
+          ...messages,
+          {
+            role: 'user',
+            content: 'Berdasarkan hasil di atas, berikan ringkasan singkat apa yang sudah dilakukan dan hasilnya dalam Bahasa Indonesia.',
+          },
+        ]);
+        if (finalMsg.content) {
+          messages.push(finalMsg);
+        }
+      }
+    }
   }
 
   return messages;
